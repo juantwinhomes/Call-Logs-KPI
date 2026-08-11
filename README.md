@@ -30,33 +30,47 @@ Nothing in this app connects to Google Drive or Monday.com yet.
 
 ## Where every number comes from
 
-**There is no sample data in this app.** Every figure is counted from a real source.
+**No sample data.** Every figure is counted from a real source.
 
-**Call activity — the 2026 Call Logs folder in Google Drive**
+### Call activity — the 2026 Call Logs folder
 
-All 32 weekly sheets, read 11 August 2026. The app counts the **detailed per-call log**
-that sits beneath the summary blocks in each sheet — 5,551 distinct records carrying
-Date, Lead Source, Campaign, Direction, Caller Type, Lead Status, Disposition and Agent.
+All 32 weekly workbooks, read 11 August 2026 **from the .xlsx export so every tab is
+visible.** Each workbook holds **11 to 13 tabs**:
+
+| Tab | Contents |
+|---|---|
+| `Daily Calls Overview` | the hand-entered weekly summary blocks |
+| `Campaigns`, `Dispositions`, `Date mailed` | reference lists |
+| **one tab per day** (`8.10`, `8.11` …) | **the per-call record — one row per call** |
+| `Week` | a roll-up copy of the daily tabs |
+
+**This app counts the daily tabs.** Three tabs carry call counts and they disagree:
+
+| Source of the count | Calls | What it is |
+|---|---|---|
+| **Daily tabs (used)** | **5,132** | primary per-call record |
+| `Week` tab | 5,095 | a copy; runs short in 5 of the 32 workbooks |
+| `Daily Calls Overview` | 4,878 | hand-entered summary blocks |
+
+The summary blocks run 254 below the daily tabs, and **196 of that gap is one week** —
+27 July to 2 August — whose summary was never filled in while its daily tabs hold 196 calls.
 
 | Measure | 2026 |
 |---|---|
-| Call records | **5,551** |
-| Inbound / Outbound / Missed | 1,645 / 3,866 / 3 |
-| Direction not recorded | 37 |
-| First Time / Repeat / Follow Up Responder | 1,059 / 1,026 / 3,388 |
-| `Appointment Booked (H)` | 128 |
-| Unique phone numbers | 2,038 |
-| Distinct Lead Status values | 10 |
-| Distinct Disposition values | 100 |
+| Call records | **5,132** |
+| Inbound / Outbound / Missed | 1,566 / 3,560 / 3 |
+| First Time / Repeat / Follow Up Responder | 1,007 / 917 / 3,165 |
+| `Appointment Booked (H)` | 121 |
+| Unique phone numbers | 2,045 |
+| Distinct Lead Type values | 7 |
+| Distinct Disposition values | 95 |
 
-**Deduplicated.** The flattened read returned some call rows twice — the same call, same
-minute, same agent, same outcome, appearing in a mirrored copy of the log inside the sheet.
-One pair differed only in duration formatting (`00:00:18` against `0:00:18`), which is what
-identified them as one call rather than two. **288 duplicate rows removed on full row
-identity: 5,839 read, 5,551 distinct calls kept.** 21 of the 32 sheets were affected, most
-heavily from April onward — the August sheet alone had 39 of its 103 rows duplicated.
+Columns as the daily tabs label them: Date · Start Time · Contact Name · Contact no. ·
+Lead Source · Campaign · Call Type · Caller Category · Lead Type · Call Disposition ·
+Lead Status · System Call Duration · Talk Time · Wait Time · Agent Name · Address ·
+Offer · Check no.
 
-**Mail cost and volume — Red Stone Upload board (Monday.com `18392647066`)**
+### Mail cost and volume — Red Stone Upload board (`18392647066`)
 
 | Standard CRM Source | Jobs | Pieces | Cost | Per piece |
 |---|---|---|---|---|
@@ -65,36 +79,24 @@ heavily from April onward — the August sheet alone had 39 of its 103 rows dupl
 | Direct Mail - Check | **none on the board** | — | — | — |
 | _in production, not mailed_ | 1 | 3,515 | $1,947.49 | — |
 
-Only jobs the board marks Done count as mailed.
-
-### The summary blocks and the detail log disagree
-
-Each sheet has both. They do not match, and which is authoritative has not been decided.
-This app counts the detail log; the Data Sync page shows the gap side by side.
-
-| | Summary blocks | Detail log, deduped (used) |
-|---|---|---|
-| Total calls | 4,878 | **5,551** |
-| Inbound | 1,512 | **1,645** |
-| Outbound | 3,357 | **3,866** |
-| First time callers | 1,027 | **1,059** |
-
 ### Not reported, and not estimated
 
-These are on the original KPI list but do not exist in the call logs. They render as
-"not reported" with the reason stated, on the Outcomes page.
+On the Outcomes page, each with the reason stated: Qualified Leads · Offers Made ·
+Contracts · Acquired Properties · Gross Revenue · Net Revenue · ROI · Cost Per Lead ·
+Cost Per Qualified Lead · Cost Per Acquisition.
 
-Qualified Leads · Offers Made · Contracts · Acquired Properties · Gross Revenue ·
-Net Revenue · ROI · Cost Per Lead · Cost Per Qualified Lead · Cost Per Acquisition
+Three columns exist but cannot carry a KPI:
 
-`Qualified` has no field in the sheets — they record Lead Status (New Interested Lead,
-Existing Interested Lead, Unresponsive, Invalid, Not Interested, Do not Mail) and no rule
-has been given for which of those counts as qualified.
+- **`Offer`** — 36 of 5,132 rows (0.7%), free text rather than numbers
+- **`Lead Status`** — blank in 5,131 of 5,132 rows; the one populated cell holds a person's name
+- **`Check no`** — 4 rows, carrying values like `Layout0, Layout4` rather than check numbers
 
-Appointment dispositions are reported **separately, by their exact sheet wording**
-(`Appointment Booked (H)` 128, `Pending Appointment` 40, `Confirmed Appointment` 26,
-`Rescheduled Appointment` 20, `Canceled Appointment` 9, `Appointment Confirmed` 4) rather
-than summed into one "appointments" figure the sheets do not define.
+`Qualified` has no column. The daily tabs record **Lead Type** (Existing Interested Lead,
+Unresponsive, New Interested Lead, Invalid, Not Interested, Do not Mail, Neutral) and no
+rule has been given for which of those counts as qualified.
+
+Appointment dispositions are reported separately by their exact sheet wording rather than
+summed into one figure the sheets do not define.
 
 ## Lead Source is derived from the Campaign
 
