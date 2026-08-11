@@ -680,7 +680,13 @@ function buildDataset(){
       const p = MASTER_PROFILE[m] || MASTER_PROFILE._review;
       const n = perLeaf[leaf] || 0;
       const c = n ? Math.max(0, Math.round(n * p.calls * jitter(.18))) : 0;
-      volume.push({monthKey:mo.key, leaf, calls:c,
+      /* Inbound / outbound split. The 31% inbound share is measured from the
+         real call logs (1,512 inbound of 4,878 total). Outbound Outreach is
+         0% inbound by definition — those calls are ones THB places. */
+      const inShare = m === "Outbound Outreach" ? 0 : 0.31;
+      const cIn  = Math.round(c * inShare);
+      const cOut = c - cIn;
+      volume.push({monthKey:mo.key, leaf, calls:c, inbound:cIn, outbound:cOut,
                    unique_callers:c ? Math.round(c * (0.82 + rnd()*0.1)) : 0});
       for (let i = 0; i < Math.round(c * 0.22); i++){
         const day = 1 + Math.floor(rnd() * (mo.y===2026 && mo.m===7 ? 11 : 28));
@@ -801,6 +807,7 @@ function monthOverlapFraction(monthKey, range){
    All Master Sources includes the review bucket: a total labelled "all" has to
    be all, or the company lead count silently drops every unclassified lead. */
 function scopeLeaves(master, leaf){
+  if (Array.isArray(leaf)) return leaf.slice();   /* explicit combined scope */
   if (master === ALL_MASTERS) return ALL_LEAVES.concat([NEEDS_REVIEW]);
   if (master === NEEDS_REVIEW) return [NEEDS_REVIEW];
   const subs = TAXONOMY[master] || [];
@@ -836,12 +843,13 @@ function suppliedCost(range, master, leaf){
 function aggregate(range, master, leaf){
   const scope = new Set(scopeLeaves(master, leaf));
 
-  let calls = 0, uniqueCallers = 0;
+  let calls = 0, inbound = 0, outbound = 0, uniqueCallers = 0;
   const keys = new Set(monthKeysIn(range));
   DATA.volume.forEach(v => {
     if (!keys.has(v.monthKey) || !scope.has(v.leaf)) return;
     const f = monthOverlapFraction(v.monthKey, range);
-    calls += v.calls * f; uniqueCallers += v.unique_callers * f;
+    calls += v.calls * f; inbound += v.inbound * f; outbound += v.outbound * f;
+    uniqueCallers += v.unique_callers * f;
   });
 
   let leads=0, qualified=0, appointments=0, offers=0, contracts=0, acquisitions=0,
@@ -870,7 +878,11 @@ function aggregate(range, master, leaf){
   return {
     costKnown, spend: costKnown ? Math.round(spend) : null,
     revenueKnown: REVENUE_SUPPLIED,
-    mailed: Math.round(mailed), calls: Math.round(calls),
+    /* Mail volume comes from the same Red Stone source as cost, so where no
+       costing exists there is no piece count either — null, not zero. */
+    mailed: costKnown ? Math.round(mailed) : null,
+    calls: Math.round(calls),
+    inbound: Math.round(inbound), outbound: Math.round(outbound),
     uniqueCallers: Math.round(uniqueCallers),
     leads, qualified, appointments, offers, contracts, acquisitions,
     gross: REVENUE_SUPPLIED ? gross : null,
@@ -885,18 +897,72 @@ function aggregate(range, master, leaf){
     cpc:  costKnown && spend > 0 ? safeDiv(spend, calls)        : null,
     /* ROI needs both sides. Real cost divided by absent revenue is not an ROI. */
     roi:  REVENUE_SUPPLIED && costKnown && spend > 0 ? (net - spend)/spend*100 : null,
+    /* Two different rates, deliberately not the same number:
+         Response Rate — every call touching the mail  / pieces mailed
+         Call Rate     — INBOUND calls only            / pieces mailed
+       Response Rate counts outbound follow-up on a mailed record; Call Rate
+       counts only people who picked up the phone and called in. */
     responseRate: mailed > 0 ? calls/mailed*100 : null,
+    callRate:     mailed > 0 ? inbound/mailed*100 : null,
+    answerRate:   calls > 0 ? inbound/calls*100 : null,
+    callsPerLead: safeDiv(calls, leads),
     perCaller:    safeDiv(mailed, uniqueCallers),
     costPerPiece: costKnown && spend > 0 ? safeDiv(spend, mailed) : null,
     jobs:c.jobs, estimatedJobs:c.estimated
   };
 }
 const COST_KPI_KEYS = new Set(["spend","cpl","cpql","cpa","cpc","roi","costPerPiece"]);
+/* Mail-volume KPIs. They need a piece count from Red Stone, so where that is
+   absent they report "awaiting mail data" rather than a zero or a blank. */
+const MAIL_KPI_KEYS = new Set(["mailed","responseRate","callRate","perCaller"]);
+
+/* Per-format direct-mail cards, named by the Direct Mail category they measure
+   so it is never ambiguous which format a number belongs to. */
+const MAIL_CARDS = [
+  {leaf:"Direct Mail - Postcard", heading:"Direct Mail — Postcard", cards:[
+    {key:"mailed",       title:"Postcards Mailed",                        fmt:"int",  dir:"flat"},
+    {key:"inbound",      title:"Total Inbound Callers From Postcard",     fmt:"int",  dir:"up"},
+    {key:"callRate",     title:"Call From Postcard Ratio",                fmt:"pct2", dir:"up"},
+    {key:"costPerPiece", title:"Cost Per Postcard",                       fmt:"usd2", dir:"down"}
+  ]},
+  {leaf:"Direct Mail - Check", heading:"Direct Mail — Check", cards:[
+    {key:"mailed",       title:"Checks Mailed",                           fmt:"int",  dir:"flat"},
+    {key:"inbound",      title:"Total Inbound Callers From Checks",       fmt:"int",  dir:"up"},
+    {key:"callRate",     title:"Response Rate (Inbound Calls from Checks)", fmt:"pct2", dir:"up"},
+    {key:"costPerPiece", title:"Cost Per Check",                          fmt:"usd2", dir:"down"}
+  ]},
+  {leaf:"Direct Mail - Letter", heading:"Direct Mail — Letter", cards:[
+    {key:"mailed",       title:"Letters Mailed",                          fmt:"int",  dir:"flat"},
+    {key:"inbound",      title:"Total Inbound Callers From Letters",      fmt:"int",  dir:"up"},
+    {key:"callRate",     title:"Response Rate (Inbound Calls from Letters)", fmt:"pct2", dir:"up"},
+    {key:"costPerPiece", title:"Cost Per Letter",                         fmt:"usd2", dir:"down"}
+  ]}
+];
+/* Combined scopes, also named by category. */
+const MAIL_COMBINED = [
+  {leaves:["Direct Mail - Check","Direct Mail - Letter"],
+   heading:"Direct Mail — Checks & Letters combined", cards:[
+    {key:"mailed",       title:"Checks & Letters Mailed",                 fmt:"int",  dir:"flat"},
+    {key:"inbound",      title:"Total Inbound Callers From Checks & Letters", fmt:"int", dir:"up"},
+    {key:"costPerPiece", title:"Cost Per Mail (Checks & Letters combined)", fmt:"usd2", dir:"down"}
+  ]},
+  {leaves:["Direct Mail - Postcard","Direct Mail - Check","Direct Mail - Letter"],
+   heading:"Direct Mail — all formats", cards:[
+    {key:"mailed",       title:"Total Pieces Mailed (All Direct Mail)",    fmt:"int",  dir:"flat"},
+    {key:"inbound",      title:"Total Inbound Callers From Direct Mail",   fmt:"int",  dir:"up"},
+    {key:"callRate",     title:"Direct Mail Call Ratio",                   fmt:"pct2", dir:"up"},
+    {key:"costPerPiece", title:"Cost Per Mail (All Direct Mail)",          fmt:"usd2", dir:"down"}
+  ]}
+];
 
 const EXEC_KPIS = [
   {key:"leads",        title:"Total Leads",             fmt:"int",  dir:"up"},
   {key:"qualified",    title:"Qualified Leads",         fmt:"int",  dir:"up"},
-  {key:"calls",        title:"Total Inbound Calls",     fmt:"int",  dir:"up"},
+  /* This card was titled "Total Inbound Calls" while reading the total-calls
+     field, so it counted outbound dials as inbound. It now reads the inbound
+     field, and total calls get their own card. */
+  {key:"inbound",      title:"Total Inbound Calls",     fmt:"int",  dir:"up"},
+  {key:"calls",        title:"Total Calls",             fmt:"int",  dir:"up"},
   {key:"spend",        title:"Marketing Spend",         fmt:"usd0", dir:"flat"},
   {key:"cpl",          title:"Cost Per Lead",           fmt:"usd2", dir:"down"},
   {key:"cpql",         title:"Cost Per Qualified Lead", fmt:"usd2", dir:"down"},
@@ -998,6 +1064,13 @@ function kpiCard(def, A, B){
       <p class="kpi-value empty">${DASH}</p>
       <div class="kpi-foot"><span class="chip flat">${ICON_CLOCK} awaiting revenue data</span>
         <p class="kpi-prev">no revenue figures supplied yet</p></div></article>`;
+  }
+  if (MAIL_KPI_KEYS.has(def.key) && !A.costKnown){
+    return `<article class="kpi">
+      <p class="kpi-title">${esc(def.title)}</p>
+      <p class="kpi-value empty">${DASH}</p>
+      <div class="kpi-foot"><span class="chip flat">${ICON_CLOCK} awaiting mail data</span>
+        <p class="kpi-prev">no piece count or cost on the Red Stone board</p></div></article>`;
   }
   if (COST_KPI_KEYS.has(def.key) && !A.costKnown){
     return `<article class="kpi">
@@ -1296,7 +1369,6 @@ function highlightIndex(){
 const PAGES = [
   {id:"dashboard", label:"Dashboard"},
   {id:"source",    label:"Source Performance"},
-  {id:"mail",      label:"Direct Mail"},
   {id:"calls",     label:"Calls"},
   {id:"deals",     label:"Deals"},
   {id:"review",    label:"Classification"},
@@ -1315,8 +1387,8 @@ function renderRail(){
     return `<button type="button" data-page="${p.id}"${cur}><span>${esc(p.label)}</span>${badge}</button>`;
   };
   const rail = document.getElementById("rail");
-  rail.innerHTML = '<p class="rail-label">Reporting</p>' + PAGES.slice(0,5).map(btn).join("") +
-                   '<p class="rail-label">Configuration</p>' + PAGES.slice(5).map(btn).join("");
+  rail.innerHTML = '<p class="rail-label">Reporting</p>' + PAGES.slice(0,4).map(btn).join("") +
+                   '<p class="rail-label">Configuration</p>' + PAGES.slice(4).map(btn).join("");
   rail.querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
     state.page = b.dataset.page; render();
   }));
@@ -1429,13 +1501,25 @@ function pageDashboard(){
   <div class="kpi-grid hero">${hero.map(d => kpiCard(d,A,B)).join("")}</div>
   <div class="kpi-grid" style="margin-top:12px">${rest.map(d => kpiCard(d,A,B)).join("")}</div>
 
-  <div class="sec"><h2>Direct Mail — Postcard</h2>
-    <p>The priority mailing channel, reported here whatever the source filter says.</p></div>
-  <div class="kpi-grid">${MAIL_KPIS.slice(0,4).map(d => {
-      const pa = aggregate(cur,"Direct Mail","Direct Mail - Postcard");
-      const pb = prevR ? aggregate(prevR,"Direct Mail","Direct Mail - Postcard") : null;
-      return kpiCard(d,pa,pb);
-    }).join("")}</div>
+  <div class="sec"><h2>Direct Mail by format</h2>
+    <p>Reported here whatever the source filter says. Response and cost figures come from the
+       Red Stone board; every card names the format it measures.</p></div>
+  ${MAIL_CARDS.map(g => {
+    const a = aggregate(cur, "Direct Mail", g.leaf);
+    const b = prevR ? aggregate(prevR, "Direct Mail", g.leaf) : null;
+    return `<div class="sec" style="margin:16px 0 8px"><h2 style="font-size:13.5px">${esc(g.heading)}</h2>
+      ${leafCosted(g.leaf) ? "" : '<p style="color:var(--warn-ink)">no mail data supplied for this format</p>'}</div>
+      <div class="kpi-grid">${g.cards.map(d => kpiCard(d,a,b)).join("")}</div>`;
+  }).join("")}
+  ${MAIL_COMBINED.map(g => {
+    const a = aggregate(cur, "Direct Mail", g.leaves);
+    const b = prevR ? aggregate(prevR, "Direct Mail", g.leaves) : null;
+    const missing = g.leaves.filter(l => !leafCosted(l));
+    return `<div class="sec" style="margin:16px 0 8px"><h2 style="font-size:13.5px">${esc(g.heading)}</h2>
+      ${missing.length ? `<p style="color:var(--warn-ink)">withheld — ${
+        missing.map(m => esc(m)).join(" and ")} ${missing.length===1?"has":"have"} no mail data</p>` : ""}</div>
+      <div class="kpi-grid">${g.cards.map(d => kpiCard(d,a,b)).join("")}</div>`;
+  }).join("")}
 
   <div class="sec"><h2>Trends</h2><p>All of ${REPORT_YEAR}${
     highlightIndex() >= 0 ? ", with " + esc(cur.label) + " emphasized" : ""}.</p></div>
@@ -1670,96 +1754,6 @@ function pageSource(){
       colour carries magnitude, not identity. Amber marks unclassified leads.</p></section>
   <div class="sec"><h2>Detail</h2></div>
   <div id="srcTable"></div>`;
-}
-
-/* ---- Direct Mail ---- */
-function pageMail(){
-  const cur = currentRange(), prevR = compareRange(cur);
-  const A = aggregate(cur, "Direct Mail", "Direct Mail - Postcard");
-  const B = prevR ? aggregate(prevR, "Direct Mail", "Direct Mail - Postcard") : null;
-  const L = aggregate(cur, "Direct Mail", "Direct Mail - Letter");
-
-  const pcQty = POSTCARD_JOBS.reduce((s,j)=>s+j.qty,0);
-  const pcCost= POSTCARD_JOBS.reduce((s,j)=>s+j.cost,0);
-  const ltQty = LETTER_JOBS.reduce((s,j)=>s+j.qty,0);
-  const ltCost= LETTER_JOBS.reduce((s,j)=>s+j.cost,0);
-  const prodQty = IN_PRODUCTION.reduce((s,j)=>s+j.qty,0);
-  const prodCost= IN_PRODUCTION.reduce((s,j)=>s+j.cost,0);
-  const noMail = MAILED_JOBS.filter(j => !j.mail);
-
-  const rows = REDSTONE_JOBS.slice().reverse().map(j => {
-    const excluded = j.status !== "Done";
-    return `<tr${excluded ? ' style="background:var(--warn-wash)"' : ""}>
-      <td class="l">${esc(j.name)}</td>
-      <td class="l"><span class="pill mono">${esc(j.job)}</span></td>
-      <td class="l">${esc("Direct Mail - " + j.fmt)}</td>
-      <td class="l">${j.status === "Done" ? '<span class="pill won">Mailed</span>'
-        : '<span class="pill warn">In production</span>'}</td>
-      <td class="l">${esc(j.upload)}</td>
-      <td class="l">${j.mail ? esc(j.mail) : '<span class="pill warn">not recorded</span>'}</td>
-      <td>${j.qty.toLocaleString("en-US")}</td>
-      <td>$${j.cost.toLocaleString("en-US",{minimumFractionDigits:2})}</td>
-      <td>$${(j.cost/j.qty).toFixed(4)}</td></tr>`;
-  }).join("");
-
-  return `${filterBar()}
-  <div class="page-head"><h2>Direct Mail</h2>
-    <p>The only channels with verified cost. Postcard and Letter both come from the Red Stone
-       Upload board; Check has no costing supplied yet.</p></div>
-
-  ${notice("warn", `<p><b>Cost is real. Volumes are sample. Revenue is not supplied at all.</b>
-    Pieces Mailed, Cost Per Piece and Marketing Spend come from the Red Stone board. Leads, calls
-    and acquisition counts are generated sample data.</p>
-    <p>Revenue figures do not exist in any source read so far, so Gross Revenue, Net Revenue and
-    ROI are withheld rather than estimated. Response Rate, Cost Per Call and Cost Per Acquisition
-    divide real cost by sample volumes, so they are structurally correct but not yet true
-    numbers.</p>`, true)}
-
-  <div class="sec"><h2>Direct Mail - Postcard</h2><p>All thirteen mail KPIs.</p></div>
-  <div class="kpi-grid">${MAIL_KPIS.map(d => kpiCard(d,A,B)).join("")}</div>
-
-  <div class="sec"><h2>Direct Mail - Letter</h2>
-    <p>${LETTER_JOBS.length} mailed job, ${ltQty.toLocaleString("en-US")} pieces,
-       $${ltCost.toFixed(2)}, $${(ltCost/ltQty).toFixed(4)} per piece —
-       ${((ltCost/ltQty)/(pcCost/pcQty)).toFixed(1)}× the postcard rate.</p></div>
-  <div class="kpi-grid">${MAIL_KPIS.slice(0,6).map(d => kpiCard(d,L,null)).join("")}</div>
-
-  <div class="sec"><h2>Mail volume against response</h2></div>
-  <div class="chart-grid">
-    ${chartCard("chMailed","Pieces Mailed By Month","pieces")}
-    ${chartCard("chMailCalls","Calls From Mail By Month","inbound calls")}
-    ${chartCard("chRate","Response Rate Trend","percent")}
-    ${chartCard("chMailCPP","Cost Per Piece By Month","USD")}
-  </div>
-
-  <div class="sec"><h2>Red Stone job log</h2>
-    <p>The source of every mail cost figure. Postcards ${pcQty.toLocaleString("en-US")} pieces
-       $${pcCost.toLocaleString("en-US",{minimumFractionDigits:2})}
-       ($${(pcCost/pcQty).toFixed(4)}/pc) · Letters ${ltQty.toLocaleString("en-US")} pieces
-       $${ltCost.toFixed(2)} ($${(ltCost/ltQty).toFixed(4)}/pc).</p></div>
-  ${IN_PRODUCTION.length ? notice("warn",
-    `<p><b>${prodQty.toLocaleString("en-US")} pieces ($${prodCost.toLocaleString("en-US",{minimumFractionDigits:2})}) are committed but not yet mailed</b>
-      and excluded from Pieces Mailed: ${IN_PRODUCTION.map(j => esc(j.name)).join(", ")}.
-      They move in automatically once the board marks them Done with a mail date.</p>`, true) : ""}
-  ${noMail.length ? notice("warn",
-    `${noMail.length} mailed job has no mail date recorded (${noMail.map(j=>esc(j.name)).join(", ")}), so it is attributed by upload date. If it actually dropped in a later month, that month is understated.`) : ""}
-  <div class="t-scroll"><table>
-    <thead><tr><th class="l">Campaign</th><th class="l">Job ID</th><th class="l">CRM Source</th>
-      <th class="l">Status</th><th class="l">Upload</th><th class="l">Mail Date</th>
-      <th>Qty</th><th>Cost</th><th>Cost / Piece</th></tr></thead>
-    <tbody>${rows}</tbody></table></div>`;
-}
-function drawMailCharts(){
-  const ms = monthlySeries("Direct Mail","Direct Mail - Postcard");
-  const labels = ms.map(m=>m.label), hi = highlightIndex();
-  mountChart("chMailed", h => columnChart(h,{labels,highlight:hi,kind:"int",
-    aria:"Pieces mailed by month", series:[{name:"Pieces Mailed",color:"var(--s1)",values:seriesVals(ms,a=>a.mailed)}]}));
-  mountChart("chMailCalls", h => columnChart(h,{labels,highlight:hi,kind:"int",
-    aria:"Calls from mail by month", series:[{name:"Calls",color:"var(--s1)",values:seriesVals(ms,a=>a.calls)}]}));
-  mountChart("chRate", h => lineChart(h,{labels,highlight:hi,kind:"pct2",
-    aria:"Response rate by month", series:[{name:"Response Rate",color:"var(--s1)",values:seriesVals(ms,a=>a.responseRate)}]}));
-  mountChart("chMailCPP", h => columnChart(h,{labels,highlight:hi,kind:"usd2",
-    aria:"Cost per piece by month", series:[{name:"Cost Per Piece",color:"var(--s1)",values:seriesVals(ms,a=>a.costPerPiece)}]}));
 }
 
 /* ---- Calls ---- */
@@ -2116,6 +2110,37 @@ function pageAdmin(){
     <p class="chart-note">Send costing per CRM source and per month and it drops straight in — the
       KPI engine, source table and ROI maths all read from this one registry.</p></section>
 
+
+  <div class="sec"><h2>Red Stone job log</h2>
+    <p>The source of every direct-mail cost figure. Postcards
+       ${POSTCARD_JOBS.reduce((s,j)=>s+j.qty,0).toLocaleString("en-US")} pieces
+       $${POSTCARD_JOBS.reduce((s,j)=>s+j.cost,0).toLocaleString("en-US",{minimumFractionDigits:2})}
+       · Letters ${LETTER_JOBS.reduce((s,j)=>s+j.qty,0).toLocaleString("en-US")} pieces
+       $${LETTER_JOBS.reduce((s,j)=>s+j.cost,0).toFixed(2)}
+       · Checks no data on the board.</p></div>
+  ${IN_PRODUCTION.length ? notice("warn",
+    `<p><b>${IN_PRODUCTION.reduce((s,j)=>s+j.qty,0).toLocaleString("en-US")} pieces
+      ($${IN_PRODUCTION.reduce((s,j)=>s+j.cost,0).toLocaleString("en-US",{minimumFractionDigits:2})})
+      are committed but not yet mailed</b> and excluded from every Mailed figure:
+      ${IN_PRODUCTION.map(j => esc(j.name)).join(", ")}. They move in automatically once the board
+      marks them Done with a mail date.</p>`, true) : ""}
+  <div class="t-scroll"><table>
+    <thead><tr><th class="l">Campaign</th><th class="l">Job ID</th><th class="l">CRM Source</th>
+      <th class="l">Status</th><th class="l">Upload</th><th class="l">Mail Date</th>
+      <th>Qty</th><th>Cost</th><th>Cost / Piece</th></tr></thead>
+    <tbody>${REDSTONE_JOBS.slice().reverse().map(j => `<tr${
+        j.status !== "Done" ? ' style="background:var(--warn-wash)"' : ""}>
+      <td class="l">${esc(j.name)}</td>
+      <td class="l"><span class="pill mono">${esc(j.job)}</span></td>
+      <td class="l">${esc("Direct Mail - " + j.fmt)}</td>
+      <td class="l">${j.status === "Done" ? '<span class="pill won">Mailed</span>'
+        : '<span class="pill warn">In production</span>'}</td>
+      <td class="l">${esc(j.upload)}</td>
+      <td class="l">${j.mail ? esc(j.mail) : '<span class="pill warn">not recorded</span>'}</td>
+      <td>${j.qty.toLocaleString("en-US")}</td>
+      <td>$${j.cost.toLocaleString("en-US",{minimumFractionDigits:2})}</td>
+      <td>$${(j.cost/j.qty).toFixed(4)}</td></tr>`).join("")}</tbody></table></div>
+
   <div class="sec"><h2>Master Source to Standard CRM Source</h2>
     <p>${MASTERS.length} master sources, ${ALL_LEAVES.length} Standard CRM Sources, exactly as supplied.</p></div>
   <section class="card"><div class="map-list">
@@ -2159,7 +2184,6 @@ function render(){
   switch(state.page){
     case "dashboard": main.innerHTML = pageDashboard(); break;
     case "source":    main.innerHTML = pageSource();    break;
-    case "mail":      main.innerHTML = pageMail();      break;
     case "calls":     main.innerHTML = pageCalls();     break;
     case "deals":     main.innerHTML = pageDeals();     break;
     case "review":    main.innerHTML = pageReview();    break;
@@ -2184,7 +2208,6 @@ function render(){
     mountChart("chRank", h => barsH(h,{rows,kind:"int",measure:"Leads",
       labelW: state.srcView === "master" ? 150 : 240, aria:"Leads by source"}));
   }
-  if (state.page === "mail")  drawMailCharts();
   if (state.page === "calls") drawCallsCharts();
   if (state.page === "review") wireReview(main);
 }
