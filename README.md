@@ -79,6 +79,12 @@ Offer · Check no.
 | Direct Mail - Check | **none on the board** | — | — | — |
 | _in production, not mailed_ | 1 | 3,515 | $1,947.49 | — |
 
+Every mailed job now carries a real Mail Date on the board, so nothing is attributed by
+its upload date any more. Job 291195 (`THB_Postcard_Relaunch_12`) had its mail date filled
+in as **2026-08-04** on 11 August, which moves its 3,171 pieces and $1,672.15 out of July
+and into August: July postcard volume reads 15,625 pieces / $7,250 and August reads
+7,754 pieces / $3,887.
+
 ### Direct-mail pipeline — monday.com board `18421423765`
 
 Board **📬 Direct Mail & Postcard Leads**, in the *Equity Track Iriga – Operating System*
@@ -109,7 +115,7 @@ Source has been given for it, so it is left unmapped.
 |---|---|---|---|---|---|---|
 | 1464 Sunrise Pkwy, Petaluma — Denise Marks | Acquired | ✅ Closed / Won | Postcard | Postcard | 2026-03-10 | **$35,918.75** |
 | 8227 Ney Ave, Oakland — Dianne Andrews | Acquired | ✅ Closed / Won | Checks | Sorted Ugly Houses EQT (Checks) | 2026-02-09 | — |
-| 1932 Chestnut Ave, Antioch | Acquired | ✅ Closed / Won | Checks | _blank_ | _blank_ | — |
+| 1932 Chestnut Ave, Antioch | Acquired | ✅ Closed / Won | Checks | _blank_ | 2026-03-06 | — |
 | 33025 Wildomar Rd, Lake Elsinore — Jose Espinoza | Cancelled Contract | 📝 Under Contract | Checks | Postcard | 2026-01-28 | — |
 | 7400 Rudsdale St #7G, Oakland — Damond Dixon | Cancelled Contract | 🚫 Cancelled Contract | Checks | Liens | 2026-03-18 | — |
 
@@ -126,21 +132,42 @@ Contract."*
 2. **One item is in two outcomes at once.** 33025 Wildomar Rd sits in the 📝 Under
    Contract group while its `Lead Stage` reads Cancelled Contract. Both readings are
    shown; neither is picked.
-3. **An acquired property has no `Date Received`.** 1932 Chestnut Ave (Acquired, Checks)
-   has no date, campaign or lead name, so it falls in no period and appears only in the
-   whole-board tables. Period cards therefore total 2 acquisitions, whole-board 3.
-4. **`Revenue` is filled on 1 of 452 items** ($35,918.75 on the Petaluma postcard deal),
-   so it is shown per deal and never totalled — no revenue KPI and no ROI comes from it.
+3. **An acquired property has no campaign or lead name.** 1932 Chestnut Ave (Acquired,
+   Checks) has `Campaign / List` and the lead link both blank. Its `Date Received` was
+   filled in on the board on 11 August and now reads 2026-03-06, so all three
+   acquisitions are dated and period counts reach 3.
+4. **`Revenue` is filled on 1 of the 3 acquisitions** — $35,918.75 on the Petaluma
+   postcard deal. That figure **is** reported, on a *Revenue From …* card per mail format,
+   and every place it appears states how many of the period's acquisitions it covers, so
+   it is never read as the period's full revenue. Both check acquisitions are blank.
+
+**Stage counts are current state, not events.** New, Contacted, Interested, Appointment
+and Under Contract are stages a lead passes through, so each is only what stands there
+today — not how many leads ever reached it. Acquired, Cancelled Contract and Dead are
+where leads stop, so those three hold. The cards are worded accordingly: *Still At
+Appointment Stage From Checks*, *Still Under Contract From Postcard*.
+
+**The board's Appointment count will not match the call logs' `Appointment Booked (H)`
+disposition, and is not supposed to.** For July 2026 direct mail the sheets hold 5 calls
+with that disposition while the board holds 1 property at Appointment stage. Three
+reasons: the sheets count **calls** and the board counts **properties**; Lead Stage shows
+only where a lead stands now, so anything that moved on no longer reads Appointment; and
+the two are different populations — 452 board properties against 1,937 direct-mail calls
+for 2026, neither a subset of the other. The app states this inline wherever the two
+sit on the same screen, with both live figures in the text.
 
 ### Not reported, and not estimated
 
 On the Outcomes page, each with the reason stated: Qualified Leads · Offers Made ·
-Contracts Signed · Acquired Properties outside direct mail · Gross Revenue · Net
-Revenue · ROI · Cost Per Lead · Cost Per Qualified Lead · Cost Per Acquisition.
+Contracts Signed · Acquired Properties outside direct mail · Net Revenue · ROI ·
+Cost Per Lead · Cost Per Qualified Lead · Cost Per Acquisition.
 
-Two of these moved off the withheld list for direct mail on 11 August 2026:
-**Acquired Properties** and **Cancelled Contracts** now come from the monday.com
-direct-mail board above. They stay withheld everywhere else, because that board covers
+Three of these moved off the withheld list for direct mail on 11 August 2026:
+**Acquired Properties**, **Cancelled Contracts** and **Revenue** now come from the
+monday.com direct-mail board above. Revenue is reported at the coverage the board
+actually has — 1 of 3 acquisitions, stated on screen every time the figure appears.
+**Net Revenue** stays withheld because the board records no purchase price, rehab,
+holding or closing cost, so a net cannot be worked out from the gross. They stay withheld everywhere else, because that board covers
 direct mail only and no board has been given for PPC, PPL, referral, TV, organic search,
 outbound or MLS.
 
@@ -348,10 +375,9 @@ They are listed on the Data Sync page.
    Red Stone board but is a letter, not a postcard, at $1.1189 per piece against the
    $0.4894 postcard rate — and the build prompt says letters are not to be promoted.
    Confirm, or say the word and it counts inside Postcard.
-3. **`Relaunch_12` is marked Done and sits in 📬 Mailed / Delivered but has no mail
-   date.** It is treated as mailed and attributed by its upload date (2026-07-30),
-   which puts its 3,171 pieces in July. If it actually dropped in August, July is
-   overstated and August understated. Filling the date in on the board settles it.
+3. ~~`Relaunch_12` has no mail date.~~ **Settled** — filled in on the board as
+   2026-08-04, so its 3,171 pieces now sit in August. No job is attributed by upload
+   date any more.
 4. **The ROI example in the prompt does not reconcile with the stated formula.**
    §5 defines ROI as `(Net Revenue − Marketing Cost) ÷ Marketing Cost × 100`. The §8
    worked example shows spend $42,580 and net revenue $268,994 against ROI 645.40%,
@@ -366,8 +392,12 @@ They are listed on the Data Sync page.
    Acquisition can be produced — see the note under *Not reported*.
 8. **Should the board's `Lead Stage` or its group win** where they disagree, as on
    33025 Wildomar Rd? Both are shown for now.
-9. **Revenue for the other four deal-stage items**, and the deal costs behind the one
-   revenue figure, would unlock Net Revenue and ROI.
+9. **Revenue on the two check acquisitions.** The board has it for the Petaluma postcard
+   deal ($35,918.75) and that is reported; 8227 Ney Ave and 1932 Chestnut Ave are blank,
+   so the revenue shown covers 1 of 3 acquisitions. Filling those two in makes the
+   revenue figure complete.
+10. **Deal costs** — purchase price, rehab, holding, closing — would turn the gross
+    revenue into Net Revenue, and with the answer to question 7 would produce ROI.
 
 ## Repository
 
