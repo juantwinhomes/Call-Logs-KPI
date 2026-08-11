@@ -482,30 +482,37 @@ const AGENTS = ["Cherry","Thea","Kyle","Genesis","John AI","Juan (Live)","Unknow
 
    2. THB_Letter_01 is a LETTER, not a postcard. It is excluded from every
       postcard KPI (the build brief says letters are not to be promoted) and
-      reported separately in the job log. Postcards are the other 15 jobs:
-      61,622 pieces, $30,160.25, blended $0.4894 per piece.
+      reported separately in the job log. The other 15 jobs are postcards:
+      61,622 pieces, $30,160.25 committed.
+
+   3. Only jobs the board marks Done count as MAILED. Relaunch_13 is still
+      "Uploaded / In Production", so its 3,515 pieces and $1,947.49 are
+      committed but not mailed, and are reported separately rather than
+      inflating Postcards Mailed. That leaves 14 mailed postcard jobs:
+      58,107 pieces, $28,212.76, blended $0.4855 per piece.
 
    Jobs are point-in-time mail drops, so they are matched to a period by
-   date rather than prorated. Two jobs carry no mail date yet; those fall
-   back to their upload date and are flagged in the UI.
+   date rather than prorated. Relaunch_12 is marked Done and sits in the
+   Mailed group but has no mail date recorded, so it falls back to its
+   upload date and is flagged in the UI.
    ------------------------------------------------------------------------- */
 const REDSTONE_JOBS = [
-  {name:"THB_Postcard_Relaunch_01", job:"281322", type:"Postcard", upload:"2026-05-09", mail:"2026-05-16", qty:996,  cost:609.31},
-  {name:"THB_Postcard_Relaunch_02", job:"281822", type:"Postcard", upload:"2026-05-13", mail:"2026-05-18", qty:1784, cost:920.73},
-  {name:"THB_Postcard_Relaunch_03", job:"282621", type:"Postcard", upload:"2026-05-20", mail:"2026-05-27", qty:972,  cost:600.52},
-  {name:"THB_Postcard_Relaunch_04", job:"282914", type:"Postcard", upload:"2026-05-22", mail:"2026-06-02", qty:1996, cost:1015.72},
-  {name:"THB_Postcard_Relaunch_05", job:"283693", type:"Postcard", upload:"2026-05-29", mail:"2026-06-06", qty:2685, cost:1334.60},
-  {name:"THB_Postcard_Relaunch_06", job:"284126", type:"Postcard", upload:"2026-06-02", mail:"2026-06-11", qty:8244, cost:3906.76},
-  {name:"THB_Letter_01",            job:"284128", type:"Letter",   upload:"2026-06-02", mail:"2026-06-11", qty:293,  cost:327.83},
-  {name:"THB_Postcard_Relaunch_07", job:"285043", type:"Postcard", upload:"2026-06-10", mail:"2026-06-18", qty:8643, cost:4111.19},
-  {name:"THB_Postcard_Relaunch_08", job:"285989", type:"Postcard", upload:"2026-06-18", mail:"2026-06-25", qty:3674, cost:1769.39},
-  {name:"THB_Postcard_Followup_01", job:"285990", type:"Postcard", upload:"2026-06-18", mail:"2026-06-25", qty:5734, cost:2807.90},
-  {name:"THB_Postcard_Relaunch_09", job:"287106", type:"Postcard", upload:"2026-06-26", mail:"2026-07-07", qty:4032, cost:1599.55},
-  {name:"THB_Postcard_Followup_02", job:"287141", type:"Postcard", upload:"2026-06-26", mail:"2026-07-07", qty:8750, cost:4274.54},
-  {name:"THB_Postcard_Relaunch_10", job:"289244", type:"Postcard", upload:"2026-07-13", mail:"2026-07-17", qty:2843, cost:1376.02},
-  {name:"THB_Postcard_Relaunch_11", job:"290763", type:"Postcard", upload:"2026-07-28", mail:"2026-08-01", qty:4583, cost:2214.38},
-  {name:"THB_Postcard_Relaunch_12", job:"291195", type:"Postcard", upload:"2026-07-30", mail:null,         qty:3171, cost:1672.15},
-  {name:"THB_Postcard_Relaunch_13", job:"291483", type:"Postcard", upload:"2026-08-03", mail:null,         qty:3515, cost:1947.49}
+  {name:"THB_Postcard_Relaunch_01",          job:"281322", type:"Postcard", status:"Done",     upload:"2026-05-09", mail:"2026-05-16", qty:996,  cost:609.31},
+  {name:"THB_Postcard_Relaunch_02",          job:"281822", type:"Postcard", status:"Done",     upload:"2026-05-13", mail:"2026-05-18", qty:1784, cost:920.73},
+  {name:"THB_Postcard_Relaunch_03",          job:"282621", type:"Postcard", status:"Done",     upload:"2026-05-20", mail:"2026-05-27", qty:972,  cost:600.52},
+  {name:"THB_Postcard_Relaunch_04",          job:"282914", type:"Postcard", status:"Done",     upload:"2026-05-22", mail:"2026-06-02", qty:1996, cost:1015.72},
+  {name:"THB_Postcard_Relaunch_05",          job:"283693", type:"Postcard", status:"Done",     upload:"2026-05-29", mail:"2026-06-06", qty:2685, cost:1334.60},
+  {name:"THB_Postcard_Relaunch_06",          job:"284126", type:"Postcard", status:"Done",     upload:"2026-06-02", mail:"2026-06-11", qty:8244, cost:3906.76},
+  {name:"THB_Letter_01",                     job:"284128", type:"Letter",   status:"Done",     upload:"2026-06-02", mail:"2026-06-11", qty:293,  cost:327.83},
+  {name:"THB_Postcard_Relaunch_07",          job:"285043", type:"Postcard", status:"Done",     upload:"2026-06-10", mail:"2026-06-18", qty:8643, cost:4111.19},
+  {name:"THB_Postcard_Relaunch_08",          job:"285989", type:"Postcard", status:"Done",     upload:"2026-06-18", mail:"2026-06-25", qty:3674, cost:1769.39},
+  {name:"THB_Postcard_Relaunch_Followup_01", job:"285990", type:"Postcard", status:"Done",     upload:"2026-06-18", mail:"2026-06-25", qty:5734, cost:2807.90},
+  {name:"THB_Postcard_Relaunch_09",          job:"287106", type:"Postcard", status:"Done",     upload:"2026-06-26", mail:"2026-07-07", qty:4032, cost:1599.55},
+  {name:"THB_Postcard_Relaunch_Followup_02", job:"287141", type:"Postcard", status:"Done",     upload:"2026-06-26", mail:"2026-07-07", qty:8750, cost:4274.54},
+  {name:"THB_Postcard_Relaunch_10",          job:"289244", type:"Postcard", status:"Done",     upload:"2026-07-13", mail:"2026-07-17", qty:2843, cost:1376.02},
+  {name:"THB_Postcard_Relaunch_11",          job:"290763", type:"Postcard", status:"Done",     upload:"2026-07-28", mail:"2026-08-01", qty:4583, cost:2214.38},
+  {name:"THB_Postcard_Relaunch_12",          job:"291195", type:"Postcard", status:"Done",     upload:"2026-07-30", mail:null,         qty:3171, cost:1672.15},
+  {name:"THB_Postcard_Relaunch_13",          job:"291483", type:"Postcard", status:"Uploaded", upload:"2026-08-03", mail:null,         qty:3515, cost:1947.49}
 ];
 
 /* -------------------------------------------------------------------------
@@ -540,12 +547,19 @@ function jobDate(j){
   return {date:new Date((j.mail || j.upload) + "T00:00:00"), estimated:!j.mail};
 }
 const POSTCARD_JOBS = REDSTONE_JOBS.filter(j => j.type === "Postcard");
-const REDSTONE_FIRST_MAIL = jobDate(POSTCARD_JOBS[0]).date;
+
+/* A job only counts as MAILED once the board says so. Relaunch_13 sits in
+   "Uploaded / In Production" — its cost is committed but the pieces have not
+   gone out, so counting it would overstate Postcards Mailed. Its spend is
+   reported separately as committed-not-yet-mailed. */
+const MAILED_JOBS     = POSTCARD_JOBS.filter(j => j.status === "Done");
+const IN_PRODUCTION   = POSTCARD_JOBS.filter(j => j.status !== "Done");
+const REDSTONE_FIRST_MAIL = jobDate(MAILED_JOBS[0]).date;
 
 /* Postcard mail volume and cost inside a date range, straight from the board. */
 function postcardMail(range){
   let qty = 0, cost = 0, jobs = 0, estimated = 0;
-  POSTCARD_JOBS.forEach(j => {
+  MAILED_JOBS.forEach(j => {
     const d = jobDate(j);
     if (d.date < range.from || d.date > range.to) return;
     qty += j.qty; cost += j.cost; jobs++;
@@ -555,7 +569,7 @@ function postcardMail(range){
 }
 
 /* Roll the board up into the costing registry, keyed by month. */
-POSTCARD_JOBS.forEach(j => {
+MAILED_JOBS.forEach(j => {
   const d = jobDate(j).date;
   const key = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0");
   const b = SOURCE_COSTING["Postcard"].byMonth;
@@ -1488,9 +1502,9 @@ function pageDashboard(){
   ${empty ? notice("warn","No records fall inside " + esc(cur.label) +
       " for " + esc(state.source) + ". The KPI cards below show an em dash rather than a zero, because no data is not the same as a value of zero.") : ""}
   ${missing.length ? notice("info", `<p><b>Costing supplied for ${costSuppliedCount()} of ${SOURCES.length} sources.</b>
-     Postcard cost comes from the Red Stone Upload board — ${POSTCARD_JOBS.length} postcard jobs,
-     ${POSTCARD_JOBS.reduce((s,j)=>s+j.qty,0).toLocaleString("en-US")} pieces,
-     $${POSTCARD_JOBS.reduce((s,j)=>s+j.cost,0).toLocaleString("en-US",{minimumFractionDigits:2})}.</p>
+     Postcard cost comes from the Red Stone Upload board — ${MAILED_JOBS.length} mailed postcard jobs,
+     ${MAILED_JOBS.reduce((s,j)=>s+j.qty,0).toLocaleString("en-US")} pieces,
+     $${MAILED_JOBS.reduce((s,j)=>s+j.cost,0).toLocaleString("en-US",{minimumFractionDigits:2})}.</p>
      <p>Still awaiting a costing figure: ${missing.map(m => esc(m)).join(", ")}.
      Marketing Spend, Cost Per Lead, Cost Per Qualified Lead, Cost Per Acquisition and ROI
      report only where costing exists, and All Sources shows no spend total at all —
@@ -1748,27 +1762,41 @@ function pageSource(){
 
 /* ---- 8c. Postcard performance ---- */
 
+/* Pieces actually mailed in the month the in-production jobs would have
+   landed in, used to size the overstatement warning. */
+function pcQtyAug(){
+  const d = jobDate(IN_PRODUCTION[0]).date;
+  return postcardMail({from:startOfMonth(d.getFullYear(), d.getMonth()),
+                       to:endOfMonth(d.getFullYear(), d.getMonth())}).qty || 1;
+}
+
 function pagePostcard(){
   const cur = currentRange(), prevR = compareRange(cur);
   const A = aggregate(cur, "Postcard");
   const B = prevR ? aggregate(prevR, "Postcard") : null;
 
-  const pcQty   = POSTCARD_JOBS.reduce((s,j) => s + j.qty, 0);
-  const pcCost  = POSTCARD_JOBS.reduce((s,j) => s + j.cost, 0);
+  const pcQty   = MAILED_JOBS.reduce((s,j) => s + j.qty, 0);
+  const pcCost  = MAILED_JOBS.reduce((s,j) => s + j.cost, 0);
+  const prodQty = IN_PRODUCTION.reduce((s,j) => s + j.qty, 0);
+  const prodCost= IN_PRODUCTION.reduce((s,j) => s + j.cost, 0);
   const letters = REDSTONE_JOBS.filter(j => j.type === "Letter");
-  const noMail  = POSTCARD_JOBS.filter(j => !j.mail);
+  const noMail  = MAILED_JOBS.filter(j => !j.mail);
 
-  const jobRows = REDSTONE_JOBS.slice().reverse().map(j => `<tr${
-      j.type === "Letter" ? ' style="background:var(--warn-wash)"' : ""}>
+  const jobRows = REDSTONE_JOBS.slice().reverse().map(j => {
+    const excluded = j.type === "Letter" || j.status !== "Done";
+    return `<tr${excluded ? ' style="background:var(--warn-wash)"' : ""}>
     <td>${esc(j.name)}</td>
     <td style="font-family:var(--mono);font-size:12.5px">${esc(j.job)}</td>
     <td>${j.type === "Letter" ? '<span class="pill warn">Letter</span>' : '<span class="pill">Postcard</span>'}</td>
+    <td>${j.status === "Done"
+      ? '<span class="pill won">Mailed</span>'
+      : '<span class="pill warn">In production</span>'}</td>
     <td>${esc(j.upload)}</td>
     <td>${j.mail ? esc(j.mail) : '<span class="pill warn">not recorded</span>'}</td>
     <td>${j.qty.toLocaleString("en-US")}</td>
     <td>$${j.cost.toLocaleString("en-US",{minimumFractionDigits:2})}</td>
     <td>$${(j.cost/j.qty).toFixed(4)}</td>
-  </tr>`).join("");
+  </tr>`;}).join("");
 
   return `${filterBar()}
   <div class="page-head"><h2>Postcard Performance</h2>
@@ -1797,9 +1825,17 @@ function pagePostcard(){
   </div>
 
   <div class="sec"><h2>Red Stone job log — the source of postcard cost</h2>
-    <p>Every postcard cost figure in this app comes from here. ${POSTCARD_JOBS.length} postcard jobs,
+    <p>Every postcard cost figure in this app comes from here. ${MAILED_JOBS.length} mailed postcard jobs,
        ${pcQty.toLocaleString("en-US")} pieces, $${pcCost.toLocaleString("en-US",{minimumFractionDigits:2})},
        blended $${(pcCost/pcQty).toFixed(4)} per piece.</p></div>
+
+  ${IN_PRODUCTION.length ? notice("warn",
+    `<p><b>${prodQty.toLocaleString("en-US")} pieces ($${prodCost.toLocaleString("en-US",{minimumFractionDigits:2})}) are committed but not yet mailed</b>
+      and are excluded from Postcards Mailed above:
+      ${IN_PRODUCTION.map(j => esc(j.name) + " (" + esc(j.status) + ")").join(", ")}.</p>
+      <p>Counting them would have overstated August by ${prodQty.toLocaleString("en-US")} pieces —
+      ${Math.round(prodQty / pcQtyAug() * 100)}% above the ${pcQtyAug().toLocaleString("en-US")} actually mailed.
+      They move into the mailed figure automatically once the board marks them Done with a mail date.</p>`, true) : ""}
 
   ${letters.length ? notice("info",
     `<p><b>${letters.length} letter job is excluded from every postcard KPI above.</b>
@@ -1813,15 +1849,17 @@ function pagePostcard(){
     `${noMail.length} postcard job${noMail.length===1?"":"s"} carry no mail date (${noMail.map(j => esc(j.name)).join(", ")}). Those are attributed by upload date instead, so their cost lands in a period without a confirmed drop date. Filling the mail dates in on the board will correct it automatically.`) : ""}
 
   <div class="t-scroll" style="margin-top:12px"><table>
-    <thead><tr><th>Campaign</th><th>Job ID</th><th>Type</th><th>Upload</th><th>Mail Date</th>
+    <thead><tr><th>Campaign</th><th>Job ID</th><th>Type</th><th>Status</th><th>Upload</th><th>Mail Date</th>
       <th>Qty</th><th>Cost</th><th>Cost / Piece</th></tr></thead>
     <tbody>${jobRows}
-      <tr class="total"><td>Postcards only</td><td></td><td></td><td></td><td></td>
+      <tr class="total"><td>Mailed postcards (${MAILED_JOBS.length} jobs)</td><td></td><td></td><td></td><td></td><td></td>
         <td>${pcQty.toLocaleString("en-US")}</td>
         <td>$${pcCost.toLocaleString("en-US",{minimumFractionDigits:2})}</td>
         <td>$${(pcCost/pcQty).toFixed(4)}</td></tr>
     </tbody>
-  </table></div>`;
+  </table></div>
+  <p class="chart-note">Highlighted rows are excluded from postcard KPIs — the letter job because
+    it is a different channel, and the in-production job because it has not mailed.</p>`;
 }
 
 function drawPostcardCharts(){

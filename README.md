@@ -35,9 +35,25 @@ mixing the two silently would produce KPIs that look authoritative and are not.
 
 **Real data**
 
-- **Postcard cost and mail volume** — the 15 postcard jobs from the Red Stone Upload
-  board (Monday.com board `18392647066`): 61,622 pieces, $30,160.25, blended
-  $0.4894 per piece. Quantity and cost exactly as recorded.
+- **Postcard cost and mail volume** — from the Red Stone Upload board (Monday.com
+  board `18392647066`), quantity and cost exactly as recorded, re-verified against a
+  live board read:
+
+  | | Jobs | Pieces | Cost | Per piece |
+  |---|---|---|---|---|
+  | **Mailed** (status Done) | 14 | **58,107** | **$28,212.76** | **$0.4855** |
+  | In production (not mailed) | 1 | 3,515 | $1,947.49 | $0.5541 |
+  | Committed total | 15 | 61,622 | $30,160.25 | $0.4894 |
+  | Letter, excluded | 1 | 293 | $327.83 | $1.1189 |
+
+  Only **mailed** jobs feed Postcards Mailed and the cost KPIs. `Relaunch_13` sits in
+  🚀 Uploaded / In Production, so its spend is committed but its pieces have not gone
+  out; counting it would have overstated August by 3,515 pieces — 77% above the 4,583
+  actually mailed. It moves into the mailed figure automatically once the board marks
+  it Done with a mail date.
+
+  By month mailed: May 3,752 / $2,130.56 · Jun 30,976 / $14,945.56 ·
+  Jul 18,796 / $8,922.26 · Aug 4,583 / $2,214.38.
 
 **Sample data**
 
@@ -134,9 +150,10 @@ They are listed on the Data Sync page.
    Red Stone board but is a letter, not a postcard, at $1.1189 per piece against the
    $0.4894 postcard rate — and the build prompt says letters are not to be promoted.
    Confirm, or say the word and it counts inside Postcard.
-3. **Two postcard jobs have no mail date** (`Relaunch_12`, `Relaunch_13`). They are
-   currently attributed by upload date. Filling the mail dates in on the board fixes
-   it automatically.
+3. **`Relaunch_12` is marked Done and sits in 📬 Mailed / Delivered but has no mail
+   date.** It is treated as mailed and attributed by its upload date (2026-07-30),
+   which puts its 3,171 pieces in July. If it actually dropped in August, July is
+   overstated and August understated. Filling the date in on the board settles it.
 4. **The ROI example in the prompt does not reconcile with the stated formula.**
    §5 defines ROI as `(Net Revenue − Marketing Cost) ÷ Marketing Cost × 100`. The §8
    worked example shows spend $42,580 and net revenue $268,994 against ROI 645.40%,
