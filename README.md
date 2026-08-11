@@ -35,18 +35,20 @@ mixing the two silently would produce KPIs that look authoritative and are not.
 
 **Real data**
 
-- **Postcard cost and mail volume** — from the Red Stone Upload board (Monday.com
-  board `18392647066`), quantity and cost exactly as recorded, re-verified against a
-  live board read:
+- **Direct mail cost and volume** — from the Red Stone Upload board (Monday.com board
+  `18392647066`), quantity and cost exactly as recorded, re-verified against a live
+  board read. These map to two Standard CRM Sources:
 
-  | | Jobs | Pieces | Cost | Per piece |
+  | Standard CRM Source | Jobs | Pieces | Cost | Per piece |
   |---|---|---|---|---|
-  | **Mailed** (status Done) | 14 | **58,107** | **$28,212.76** | **$0.4855** |
-  | In production (not mailed) | 1 | 3,515 | $1,947.49 | $0.5541 |
-  | Committed total | 15 | 61,622 | $30,160.25 | $0.4894 |
-  | Letter, excluded | 1 | 293 | $327.83 | $1.1189 |
+  | **Direct Mail - Postcard** | 13 | **58,107** | **$28,212.76** | **$0.4855** |
+  | **Direct Mail - Letter** | 1 | 293 | $327.83 | $1.1189 |
+  | _in production, not mailed_ | 1 | 3,515 | $1,947.49 | $0.5541 |
 
-  Only **mailed** jobs feed Postcards Mailed and the cost KPIs. `Relaunch_13` sits in
+  The letter job is a costed CRM source in its own right, not an exclusion — at 2.3× the
+  postcard rate it simply must not be blended into postcard KPIs.
+
+  Only **mailed** jobs feed Pieces Mailed and the cost KPIs. `Relaunch_13` sits in
   🚀 Uploaded / In Production, so its spend is committed but its pieces have not gone
   out; counting it would have overstated August by 3,515 pieces — 77% above the 4,583
   actually mailed. It moves into the mailed figure automatically once the board marks
@@ -65,9 +67,9 @@ Volumes are anchored to Twin Home Buyer's real 2026 shape so the prototype reads
 familiar — roughly 119 leads and 610 calls a month, ~4 acquisitions a month — but they
 are generated, not measured.
 
-Because of this split, any postcard KPI that divides real cost by sample revenue
-(ROI, Cost Per Acquisition) is structurally correct but not yet a true number. The
-Postcard Performance page says so directly.
+Because of this split, any KPI that divides real cost by sample revenue (ROI, Cost Per
+Acquisition, Response Rate) is structurally correct but not yet a true number. The
+Direct Mail page says so directly, at the top.
 
 ## Lead Source is derived from the Campaign
 
