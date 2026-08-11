@@ -1467,7 +1467,65 @@ function wireFilters(){
   on("fTo","change",     e => { state.customTo = e.target.value; render(); });
 }
 
-/* ---- Dashboard ---- */
+/* ---- Dashboard ----
+   The dashboard shows ONE set of numbers: whatever the filters select. The
+   direct-mail format cards only appear when the selection is direct mail, so
+   picking a PPC or Referral source does not leave postcard and check figures
+   sitting underneath it. */
+
+function kpiHeading(){
+  if (state.master === ALL_MASTERS) return "Company KPIs — all sources";
+  if (state.master === NEEDS_REVIEW) return "Unclassified leads";
+  if (state.leaf !== ALL_LEAF && hasChoice(state.master)) return state.leaf;
+  return state.master;
+}
+function kpiSubheading(){
+  if (state.master === ALL_MASTERS)
+    return "Every source combined, including leads the campaign could not classify.";
+  if (state.master === NEEDS_REVIEW)
+    return "Leads whose campaign could not settle a Standard CRM Source.";
+  if (state.leaf !== ALL_LEAF && hasChoice(state.master))
+    return "This Standard CRM Source only, inside " + state.master + ".";
+  return "All Standard CRM Sources inside " + state.master + " combined.";
+}
+
+/* Which mail-format blocks belong on screen for the current selection. */
+function mailSection(cur, prevR){
+  if (state.master !== "Direct Mail") return "";
+
+  const render = (heading, scopeLeaf, cards, missingNote) => {
+    const a = aggregate(cur, "Direct Mail", scopeLeaf);
+    const b = prevR ? aggregate(prevR, "Direct Mail", scopeLeaf) : null;
+    return `<div class="sec" style="margin:18px 0 8px">
+        <h2 style="font-size:13.5px">${esc(heading)}</h2>
+        ${missingNote ? `<p style="color:var(--warn-ink)">${esc(missingNote)}</p>` : ""}</div>
+      <div class="kpi-grid">${cards.map(d => kpiCard(d,a,b)).join("")}</div>`;
+  };
+
+  /* One specific format selected — show only that format. */
+  if (state.leaf !== ALL_LEAF){
+    const g = MAIL_CARDS.find(x => x.leaf === state.leaf);
+    if (!g) return "";
+    return `<div class="sec"><h2>Mail performance</h2>
+        <p>Piece counts and cost come from the Red Stone board.</p></div>` +
+      render(g.heading, g.leaf, g.cards,
+        leafCosted(g.leaf) ? "" : "no piece count or cost on the Red Stone board for this format");
+  }
+
+  /* Whole channel selected — every format, then the combined views. */
+  return `<div class="sec"><h2>Mail performance by format</h2>
+      <p>Each card names the format it measures. Piece counts and cost come from the
+         Red Stone board.</p></div>` +
+    MAIL_CARDS.map(g => render(g.heading, g.leaf, g.cards,
+      leafCosted(g.leaf) ? "" : "no piece count or cost on the Red Stone board for this format")).join("") +
+    MAIL_COMBINED.map(g => {
+      const missing = g.leaves.filter(l => !leafCosted(l));
+      return render(g.heading, g.leaves, g.cards, missing.length
+        ? "withheld — " + missing.join(" and ") + (missing.length===1?" has":" have") + " no mail data"
+        : "");
+    }).join("");
+}
+
 function pageDashboard(){
   const cur = currentRange(), prevR = compareRange(cur);
   const A = aggregate(cur, state.master, state.leaf);
@@ -1497,29 +1555,11 @@ function pageDashboard(){
      totals above so the lead count stays true, but they sit outside every named source until
      resolved on the Classification page.</p>`, true) : ""}
 
-  <div class="sec"><h2>Executive KPIs</h2><p>Every card recalculates from the filters above.</p></div>
+  <div class="sec"><h2>${esc(kpiHeading())}</h2><p>${esc(kpiSubheading())}</p></div>
   <div class="kpi-grid hero">${hero.map(d => kpiCard(d,A,B)).join("")}</div>
   <div class="kpi-grid" style="margin-top:12px">${rest.map(d => kpiCard(d,A,B)).join("")}</div>
 
-  <div class="sec"><h2>Direct Mail by format</h2>
-    <p>Reported here whatever the source filter says. Response and cost figures come from the
-       Red Stone board; every card names the format it measures.</p></div>
-  ${MAIL_CARDS.map(g => {
-    const a = aggregate(cur, "Direct Mail", g.leaf);
-    const b = prevR ? aggregate(prevR, "Direct Mail", g.leaf) : null;
-    return `<div class="sec" style="margin:16px 0 8px"><h2 style="font-size:13.5px">${esc(g.heading)}</h2>
-      ${leafCosted(g.leaf) ? "" : '<p style="color:var(--warn-ink)">no mail data supplied for this format</p>'}</div>
-      <div class="kpi-grid">${g.cards.map(d => kpiCard(d,a,b)).join("")}</div>`;
-  }).join("")}
-  ${MAIL_COMBINED.map(g => {
-    const a = aggregate(cur, "Direct Mail", g.leaves);
-    const b = prevR ? aggregate(prevR, "Direct Mail", g.leaves) : null;
-    const missing = g.leaves.filter(l => !leafCosted(l));
-    return `<div class="sec" style="margin:16px 0 8px"><h2 style="font-size:13.5px">${esc(g.heading)}</h2>
-      ${missing.length ? `<p style="color:var(--warn-ink)">withheld — ${
-        missing.map(m => esc(m)).join(" and ")} ${missing.length===1?"has":"have"} no mail data</p>` : ""}</div>
-      <div class="kpi-grid">${g.cards.map(d => kpiCard(d,a,b)).join("")}</div>`;
-  }).join("")}
+  ${mailSection(cur, prevR)}
 
   <div class="sec"><h2>Trends</h2><p>All of ${REPORT_YEAR}${
     highlightIndex() >= 0 ? ", with " + esc(cur.label) + " emphasized" : ""}.</p></div>
