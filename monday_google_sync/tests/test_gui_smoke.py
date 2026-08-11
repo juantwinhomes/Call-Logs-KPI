@@ -282,3 +282,122 @@ def test_about_page_lists_the_data_locations(app):
     assert APP_VERSION in text
     assert "credentials" in text.lower()
     page.close()
+
+
+def test_the_drive_picker_lists_folders_and_lets_one_be_chosen(app, pump):
+    """The folder browser is the new way to choose a spreadsheet."""
+    from tests.test_drive_and_diagnostics import FakeDriveApi, FakeGoogleAuth, folder, sheet
+    from ui.drive_picker import DrivePicker
+
+    from services.google_drive_service import GoogleDriveService
+    drive = GoogleDriveService(FakeGoogleAuth())
+    drive._svc = FakeDriveApi([
+        folder("f1", "2026 Call Logs", ["root"]),
+        sheet("s1", "Lead Tracker", ["root"]),
+    ])
+    picker = DrivePicker(FakeGoogleAuth(), drive=drive)
+    assert pump(lambda: picker.tree.topLevelItemCount() >= 2), "the folder never listed"
+
+    rows = [picker.tree.topLevelItem(i) for i in range(picker.tree.topLevelItemCount())]
+    names = [r.text(0) for r in rows]
+    assert any("2026 Call Logs" in n for n in names), names
+    assert any("Lead Tracker" in n for n in names), names
+    kinds = {r.text(1) for r in rows}
+    assert kinds == {"Folder", "Google Sheet"}
+
+    # Double-clicking the spreadsheet chooses it and closes the dialog.
+    sheet_row = next(r for r in rows if r.text(1) == "Google Sheet")
+    picker._activate(sheet_row, 0)
+    assert picker.chosen_id == "s1"
+    assert picker.chosen_name == "Lead Tracker"
+    picker.close()
+
+
+def test_the_drive_picker_explains_itself_when_the_scope_is_missing(app):
+    from PySide6.QtWidgets import QLabel
+    from tests.test_drive_and_diagnostics import FakeGoogleAuth
+    from utils.config import GOOGLE_SCOPE_SHEETS
+    from ui.drive_picker import DrivePicker
+
+    picker = DrivePicker(FakeGoogleAuth([GOOGLE_SCOPE_SHEETS]))
+    app.processEvents()
+
+    text = " ".join(w.text() for w in picker.findChildren(QLabel))
+    assert "extra permission" in text
+    assert "paste the spreadsheet link" in text, "must offer the way around it"
+    assert picker.btn_choose.text() == "Reconnect Google Sheets"
+    assert not picker.tree.isEnabled()
+    picker.close()
+
+
+def test_the_diagnostics_dialog_lists_the_checks(app, pump):
+    from PySide6.QtWidgets import QLabel
+    from tests.test_drive_and_diagnostics import _DiagAuth, _settings_with_config
+    from ui.diagnostics_dialog import DiagnosticsDialog
+
+    settings = _settings_with_config(False)
+    dialog = DiagnosticsDialog(_DiagAuth(), settings)
+    assert pump(lambda: dialog.report is not None), "the checks never finished"
+    assert dialog.tree.topLevelItemCount() >= 8
+    labels = [dialog.tree.topLevelItem(i).text(0)
+              for i in range(dialog.tree.topLevelItemCount())]
+    assert "Configuration" in labels
+    assert "Monday.com connection" in labels
+    assert "Google Sheets connection" in labels
+    verdict = " ".join(w.text() for w in dialog.findChildren(QLabel))
+    assert "stopping the app" in verdict or "needs setting up" in verdict
+    dialog.close()
+
+
+def test_settings_shows_a_browse_drive_button(app):
+    from ui.settings_window import SettingsPage
+    settings = configure()
+    page = SettingsPage(FakeAuth(), settings)
+    page.set_connection_state(True, True)
+    app.processEvents()
+
+    assert page.btn_browse.text() == "Browse Google Drive..."
+    assert page.btn_browse.isEnabled()
+    page.set_connection_state(True, False)
+    assert not page.btn_browse.isEnabled(), "browsing needs Google connected"
+    page.close()
+
+
+def test_a_task_result_is_delivered_on_the_calling_thread(app, pump):
+    """Regression: handlers connected as bare closures ran in the worker thread.
+
+    Anything touching a widget from there is undefined behaviour, and it showed up
+    as the folder browser opening empty and occasional hard crashes. run_task
+    marshals the result back, so this records which thread the handler saw.
+    """
+    import threading
+    from ui.workers import run_task
+
+    main_thread = threading.get_ident()
+    seen: dict[str, int] = {}
+
+    def work() -> str:
+        seen["worker"] = threading.get_ident()
+        return "done"
+
+    def ok(_message: str) -> None:
+        seen["handler"] = threading.get_ident()
+
+    run_task(work, ok)
+    assert pump(lambda: "handler" in seen), "the handler never ran"
+
+    assert seen["worker"] != main_thread, "the work should be off the GUI thread"
+    assert seen["handler"] == main_thread, "the handler must be back on the GUI thread"
+
+
+def test_a_task_is_not_lost_to_garbage_collection(app, pump):
+    """Regression: start() kept no reference, so the worker could be collected
+    before the thread invoked it and the task silently never ran."""
+    import gc
+    from ui.workers import run_task
+
+    done: list[str] = []
+    run_task(lambda: "value", lambda msg: done.append(msg), success_text="finished")
+    gc.collect()                       # the worker is unreferenced by the caller
+    assert pump(lambda: bool(done)), "the task was collected before it ran"
+    assert done == ["finished"]

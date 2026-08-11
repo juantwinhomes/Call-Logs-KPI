@@ -19,7 +19,7 @@ from ui.settings_window import SettingsPage
 from ui.sync_history import SyncHistoryPage
 from ui.style import ACCENT, BAD, GOOD, STYLESHEET, WARN
 from ui.widgets import Card, ConnectionRow, Metric, Pill, hline
-from ui.workers import CallableWorker, StatusProbeWorker, SyncWorker, start
+from ui.workers import StatusProbeWorker, SyncWorker, run_task, start
 from utils.config import APP_NAME, APP_VERSION
 from utils.logger import get_logger
 
@@ -62,6 +62,7 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self._build_dashboard())
         self.settings_page = SettingsPage(self.auth, self.settings)
         self.settings_page.config_saved.connect(self._on_config_saved)
+        self.settings_page.reconnect_google_requested.connect(self._connect_google)
         self.stack.addWidget(self._scrolled(self.settings_page))
         self.history_page = SyncHistoryPage()
         self.stack.addWidget(self._scrolled(self.history_page))
@@ -138,6 +139,10 @@ class MainWindow(QMainWindow):
         self.lbl_mode = Pill("Preview mode", "warn")
         row.addWidget(self.lbl_mode)
         row.addStretch(1)
+        btn_diag = QPushButton("Check my setup")
+        btn_diag.setToolTip("Run every prerequisite check and say what is missing.")
+        btn_diag.clicked.connect(self._open_diagnostics)
+        row.addWidget(btn_diag)
         btn_settings = QPushButton("Open Settings")
         btn_settings.clicked.connect(lambda: self._goto("Settings"))
         row.addWidget(btn_settings)
@@ -373,8 +378,6 @@ class MainWindow(QMainWindow):
 
     # --------------------------------------------------------- connect / test #
     def _run_task(self, fn, success: str, on_ok=None) -> None:
-        worker = CallableWorker(fn, success)
-
         def ok(message: str) -> None:
             self._set_status("Ready", "idle")
             if on_ok:
@@ -387,9 +390,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Not connected", message)
             self.refresh_connection_status()
 
-        worker.ok.connect(ok)
-        worker.failed.connect(failed)
-        self._track(start(worker))
+        self._track(run_task(fn, ok, failed, success_text=success))
 
     def _connect_monday(self) -> None:
         mode_oauth = self.auth.monday.oauth_available
@@ -467,6 +468,11 @@ class MainWindow(QMainWindow):
                 == QMessageBox.StandardButton.Yes:
             self.auth.google.disconnect()
             self.refresh_connection_status()
+
+    def _open_diagnostics(self) -> None:
+        from ui.diagnostics_dialog import DiagnosticsDialog
+        DiagnosticsDialog(self.auth, self.settings, self).exec()
+        self.refresh_connection_status()
 
     # ----------------------------------------------------------------- refresh #
     def _service_factory(self) -> SyncService:

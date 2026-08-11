@@ -119,13 +119,18 @@ needs about ten minutes.
 
 1. Go to <https://console.cloud.google.com/> and create a project, or pick an
    existing one — for example `Monday Sheets Sync`.
-2. **APIs & Services → Library**, search for **Google Sheets API**, click
-   **Enable**.
+2. **APIs & Services → Library** and enable **two** APIs:
+   - **Google Sheets API** — reading and writing the spreadsheet.
+   - **Google Drive API** — listing folder and file *names* so staff can browse
+     to their spreadsheet instead of pasting a link. Skip it and everything still
+     works; only the **Browse Google Drive** button stops working, and the app
+     says so plainly rather than failing oddly.
 3. **APIs & Services → OAuth consent screen**
    - User type: **Internal** if you use Google Workspace, otherwise **External**.
    - App name: `Monday + Google Sheets Sync`, and fill in the support email.
-   - Scopes: add `https://www.googleapis.com/auth/spreadsheets`. That is the only
-     scope the app asks for.
+   - Scopes: add these two, which are the only ones the app ever asks for:
+     - `https://www.googleapis.com/auth/spreadsheets`
+     - `https://www.googleapis.com/auth/drive.metadata.readonly`
    - If you chose **External**, add each member of staff under **Test users**, or
      publish the app.
 4. **APIs & Services → Credentials → Create Credentials → OAuth client ID**
@@ -144,13 +149,22 @@ Finally, **share the spreadsheet with the Google account each person will connec
 with, giving it Editor access.** The app cannot write to a sheet the account can
 only view.
 
-### Why this scope
+### Why these two scopes
 
-`spreadsheets` allows reading and writing the spreadsheets the signed-in account
-can already reach. The narrower `drive.file` scope only covers files the app
-itself created, so it cannot open your existing tracker; the broader `drive` scope
-would hand over every file in the account. `spreadsheets` is the least privilege
-that does the job.
+**`spreadsheets`** allows reading and writing the spreadsheets the signed-in
+account can already reach. The narrower `drive.file` scope only covers files the
+app itself created, so it cannot open your existing tracker; the broader `drive`
+scope would hand over every file in the account. `spreadsheets` is the least
+privilege that does the job.
+
+**`drive.metadata.readonly`** allows listing *names* — folders, and which files
+are spreadsheets. It carries no ability to read file contents at all. The app can
+see that a document called "Payroll 2026" exists; it cannot see a single cell of
+it. That is what makes the folder browser possible without asking for access to
+everything in the account.
+
+Neither `drive` nor `drive.readonly` is ever requested, and there is a test that
+fails the build if one ever is.
 
 ---
 
@@ -195,8 +209,15 @@ Open **Settings**:
 3. **Load columns**.
 
 **Google Sheets**
-4. Paste the spreadsheet link straight from your browser's address bar — the app
-   pulls the ID out of it — then **Open spreadsheet**.
+4. Press **Browse Google Drive...** and find your spreadsheet by folder. The
+   left-hand list holds the four places a sheet can live — **My Drive**,
+   **Shared with me**, **Starred** and **Shared drives** — and the trail across
+   the top walks back out of a folder. Double-click a folder to go in, a
+   spreadsheet to choose it. Search finds a sheet by name anywhere the account
+   can see, which beats clicking through a deep tree.
+
+   Or paste the spreadsheet link from your browser's address bar into the box
+   below and press **Open spreadsheet**. The app pulls the ID out of the URL.
 5. Choose the worksheet tab.
 
 **Column mappings**
@@ -377,7 +398,7 @@ the code is not.
 python -m pytest tests -q
 ```
 
-91 tests, no network access required. They cover:
+129 tests, no network access required. They cover:
 
 - **The sync engine** against in-memory Monday and Sheets doubles: first run,
   repeat runs, change detection, five consecutive refreshes producing no
@@ -392,6 +413,20 @@ python -m pytest tests -q
   back to a key file instead of silently corrupting itself.
 - **Error mapping**: every HTTP status to the right class and a readable
   sentence, with the technical detail kept out of the user-facing message.
+- **Drive folder browsing** against an in-memory Drive: folder contents, the
+  folder-before-file ordering, subfolder navigation, non-spreadsheet files being
+  hidden, trashed items excluded, Shared with me / Starred / Shared drives,
+  shortcuts resolving to their target, the breadcrumb path, a malformed parent
+  chain not looping forever, search, and an apostrophe in a name not breaking the
+  query.
+- **The scope upgrade path**: an old connection that predates folder browsing is
+  detected, asks for a reconnect in plain words, and keeps syncing meanwhile. A
+  test also fails the build if the full Drive scope is ever requested.
+- **Diagnostics**: every failing check carries an instruction, a missing scope is
+  a warning rather than a failure, and the report survives the log redaction
+  filter unchanged.
+- **Two threading regressions**, each with a test: a task result must arrive on
+  the GUI thread, and a task must not be lost to garbage collection.
 - **The GUI**, built headless: every page renders, the Refresh button stays
   disabled until both services are connected and the configuration is complete,
   the locked button reads `CHECKING FOR UPDATES...`, the result panel fills in
@@ -429,14 +464,18 @@ monday_google_sync/
 │   ├── logs_view.py            app.log viewer
 │   ├── about.py                versions, file locations, app-update check
 │   ├── preview_dialog.py       Review Changes before writing
+│   ├── drive_picker.py         browse Drive by folder and pick a spreadsheet
+│   ├── diagnostics_dialog.py   Check my setup
 │   ├── widgets.py              cards, metrics, status pills, connection rows
 │   ├── workers.py              background threads
 │   └── style.py                the stylesheet
 ├── services/
-│   ├── auth_service.py         Monday token/OAuth, Google OAuth, token refresh
+│   ├── auth_service.py         Monday token/OAuth, Google OAuth, token refresh, scopes
 │   ├── monday_service.py       GraphQL client, read only
 │   ├── google_sheets_service.py Sheets read, append, update in place
+│   ├── google_drive_service.py folder browsing, metadata only
 │   ├── sync_service.py         plan / apply, the comparison rules
+│   ├── diagnostics.py          the Check my setup report
 │   └── errors.py               one error type, user sentence and technical detail
 ├── database/
 │   ├── database.py             SQLite connection and migrations
@@ -445,7 +484,7 @@ monday_google_sync/
 │   ├── config.py               paths, constants, environment
 │   ├── logger.py               rotating log with credential redaction
 │   └── security.py             encrypted credential store
-├── tests/                      91 tests, no network needed
+├── tests/                      129 tests, no network needed
 ├── resources/app.ico
 ├── requirements.txt
 ├── .env.example
@@ -502,6 +541,27 @@ force a full comparison.
 **A refresh went wrong and I need to know why.**
 **Logs** shows `app.log`, and **Sync History** lists every run with its technical
 error. Neither contains credentials, so both are safe to send on.
+
+**Browse Google Drive says it needs an extra permission.**
+The connection was made before folder browsing existed and carries only the
+Sheets scope. Press **Reconnect Google Sheets** and approve the request. Syncing
+works fine without it — only the Browse button needs it — and pasting a link
+needs nothing new.
+
+**"The Google Drive API is not enabled for this project."**
+Step 2 of [Google setup](#google-setup) — enable the Drive API alongside the
+Sheets API. Or ignore it and paste spreadsheet links instead.
+
+**The folder browser is empty, or a spreadsheet I can see in Drive is missing.**
+It only lists folders and Google Sheets; other files are hidden deliberately.
+If the sheet lives in someone else's Drive, look under **Shared with me** rather
+than **My Drive**, or use search.
+
+**Something is wrong and I do not know what.**
+Press **Check my setup** on the dashboard. It walks every prerequisite in order
+and says which one is failing and what to do about it. **Copy to clipboard** or
+**Save as a text file** produces a report with no credentials in it, safe to send
+to whoever supports the app.
 
 **Everything looks broken after moving machines.**
 Credentials are encrypted with a key held in that machine's credential store, so

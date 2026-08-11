@@ -14,7 +14,7 @@ from services.google_sheets_service import GoogleSheetsService, extract_spreadsh
 from services.monday_service import (ITEM_ID_COLUMN_ID, MondayColumn, MondayService,
                                      NAME_COLUMN_ID)
 from ui.widgets import Card
-from ui.workers import CallableWorker, start
+from ui.workers import run_task
 from utils.config import TRACK_ITEM_ID, TRACKING_COLUMNS
 from utils.logger import get_logger
 
@@ -39,6 +39,7 @@ SUGGESTED = {
 
 class SettingsPage(QWidget):
     config_saved = Signal()
+    reconnect_google_requested = Signal()
 
     def __init__(self, auth: AuthService, settings: SettingsStore) -> None:
         super().__init__()
@@ -126,23 +127,38 @@ class SettingsPage(QWidget):
         grid.setHorizontalSpacing(12)
         grid.setVerticalSpacing(8)
 
-        grid.addWidget(QLabel("Spreadsheet link or ID"), 0, 0)
-        self.ed_sheet_id = QLineEdit()
-        self.ed_sheet_id.setPlaceholderText("Paste the full https://docs.google.com/... link")
-        self.ed_sheet_id.editingFinished.connect(self._normalise_sheet_id)
-        grid.addWidget(self.ed_sheet_id, 0, 1)
+        grid.addWidget(QLabel("Spreadsheet"), 0, 0)
+        pick_row = QHBoxLayout()
+        pick_row.setSpacing(8)
+        self.btn_browse = QPushButton("Browse Google Drive...")
+        self.btn_browse.setObjectName("Primary")
+        self.btn_browse.setToolTip("Open your Drive folders and pick the spreadsheet.")
+        self.btn_browse.clicked.connect(self._browse_drive)
+        pick_row.addWidget(self.btn_browse)
+        self.lbl_chosen = QLabel("Nothing chosen yet")
+        self.lbl_chosen.setObjectName("Muted")
+        self.lbl_chosen.setWordWrap(True)
+        pick_row.addWidget(self.lbl_chosen, 1)
+        grid.addLayout(pick_row, 0, 1)
         self.btn_load_tabs = QPushButton("Open spreadsheet")
         self.btn_load_tabs.clicked.connect(self._load_worksheets)
         grid.addWidget(self.btn_load_tabs, 0, 2)
 
-        grid.addWidget(QLabel("Worksheet tab"), 1, 0)
+        grid.addWidget(QLabel("or paste a link / ID"), 1, 0)
+        self.ed_sheet_id = QLineEdit()
+        self.ed_sheet_id.setPlaceholderText(
+            "https://docs.google.com/spreadsheets/d/... - only needed if you would rather not browse")
+        self.ed_sheet_id.editingFinished.connect(self._normalise_sheet_id)
+        grid.addWidget(self.ed_sheet_id, 1, 1)
+
+        grid.addWidget(QLabel("Worksheet tab"), 2, 0)
         self.cb_worksheet = QComboBox()
         self.cb_worksheet.setEditable(True)
         self.cb_worksheet.setMinimumWidth(280)
-        grid.addWidget(self.cb_worksheet, 1, 1)
+        grid.addWidget(self.cb_worksheet, 2, 1)
         self.lbl_sheet_name = QLabel("")
         self.lbl_sheet_name.setObjectName("Hint")
-        grid.addWidget(self.lbl_sheet_name, 1, 2)
+        grid.addWidget(self.lbl_sheet_name, 2, 2)
         card.add_layout(grid)
 
         note = QLabel(
@@ -238,6 +254,7 @@ class SettingsPage(QWidget):
         for w in (self.btn_load_ws, self.btn_load_boards, self.btn_load_cols):
             w.setEnabled(monday_ok)
         self.btn_load_tabs.setEnabled(google_ok)
+        self.btn_browse.setEnabled(google_ok)
         bits = []
         if not monday_ok:
             bits.append("Connect Monday.com to load workspaces, boards and columns.")
@@ -251,6 +268,9 @@ class SettingsPage(QWidget):
         self.ed_board_id.setText(cfg.board_id)
         self.ed_sheet_id.setText(cfg.spreadsheet_id)
         self.lbl_sheet_name.setText(cfg.spreadsheet_name)
+        self.lbl_chosen.setText(cfg.spreadsheet_name or
+                                (f"ID {cfg.spreadsheet_id}" if cfg.spreadsheet_id
+                                 else "Nothing chosen yet"))
         if cfg.worksheet and self.cb_worksheet.findText(cfg.worksheet) < 0:
             self.cb_worksheet.addItem(cfg.worksheet)
         self.cb_worksheet.setCurrentText(cfg.worksheet)
@@ -280,11 +300,15 @@ class SettingsPage(QWidget):
                 busy_widget.setEnabled(True)
                 busy_widget.setText(original)
 
-        worker = CallableWorker(fn)
-        worker.ok.connect(lambda payload: (restore(), on_ok(payload)))
-        worker.failed.connect(lambda msg, _d: (restore(),
-                                               QMessageBox.warning(self, "Could not load", msg)))
-        thread = start(worker)
+        def ok(payload: str) -> None:
+            restore()
+            on_ok(payload)
+
+        def failed(message: str, _detail: str) -> None:
+            restore()
+            QMessageBox.warning(self, "Could not load", message)
+
+        thread = run_task(fn, ok, failed)
         self._threads.append(thread)
         thread.finished.connect(lambda: self._threads.remove(thread)
                                 if thread in self._threads else None)
@@ -382,6 +406,25 @@ class SettingsPage(QWidget):
         self._run(fetch, done, self.btn_load_cols, "Loading...")
 
     # ------------------------------------------------------------ google load #
+    def _browse_drive(self) -> None:
+        """Open the Drive folder browser and take whatever it returns."""
+        from ui.drive_picker import DrivePicker
+
+        if not self._google_ok:
+            QMessageBox.information(
+                self, "Connect Google first",
+                "Connect Google Sheets on the dashboard, then you can browse your Drive folders.")
+            return
+        picker = DrivePicker(self.auth.google, self)
+        picker.reconnect_requested.connect(self.reconnect_google_requested.emit)
+        if picker.exec() and picker.chosen_id:
+            self.ed_sheet_id.setText(picker.chosen_id)
+            self.cfg.spreadsheet_name = picker.chosen_name
+            self.lbl_chosen.setText(picker.chosen_name)
+            self.lbl_sheet_name.setText(picker.chosen_name)
+            self.lbl_state.setText(f'Chose "{picker.chosen_name}". Now pick the worksheet tab.')
+            self._load_worksheets()
+
     def _normalise_sheet_id(self) -> None:
         raw = self.ed_sheet_id.text().strip()
         if not raw:

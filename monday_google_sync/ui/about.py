@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (QGridLayout, QHBoxLayout, QLabel, QMessageBox, QP
                                QVBoxLayout, QWidget)
 
 from ui.widgets import Card
-from ui.workers import CallableWorker, start
+from ui.workers import run_task
 from utils.config import (APP_NAME, APP_SLUG, APP_VERSION, data_dir, db_path, is_frozen, log_dir,
                           token_store_path)
 from utils.logger import get_logger
@@ -156,16 +156,17 @@ class AboutPage(QWidget):
             self.btn_check.setEnabled(True)
             self.btn_check.setText("Check for App Updates")
 
-        worker = CallableWorker(fetch)
-        worker.ok.connect(lambda msg: (restore(),
-                                       QMessageBox.information(self, "Application updates", msg)))
-        worker.failed.connect(lambda msg, _d: (
-            restore(),
+        def ok(message: str) -> None:
+            restore()
+            QMessageBox.information(self, "Application updates", message)
+
+        def failed(_message: str, _detail: str) -> None:
+            restore()
             QMessageBox.warning(self, "Could not check",
                                 "The update server could not be reached. This does not affect "
-                                "synchronising your data.")))
-        thread = start(worker)
-        self._threads.append(thread)
+                                "synchronising your data.")
+
+        self._threads.append(run_task(fetch, ok, failed))
 
 
 def _newer(candidate: str, current: str) -> bool:

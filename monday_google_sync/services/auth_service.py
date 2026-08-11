@@ -28,7 +28,8 @@ from typing import Any, Callable
 import requests
 
 from services.errors import AppError, AuthError, ConfigError, http_to_error, wrap_network
-from utils.config import (Environment, GOOGLE_OAUTH_LOOPBACK_PORTS, GOOGLE_SCOPES, HTTP_TIMEOUT,
+from utils.config import (Environment, GOOGLE_OAUTH_LOOPBACK_PORTS,
+                          GOOGLE_SCOPE_DRIVE_METADATA, GOOGLE_SCOPES, HTTP_TIMEOUT,
                           MONDAY_API_URL, MONDAY_OAUTH_AUTHORIZE, MONDAY_OAUTH_SCOPES,
                           MONDAY_OAUTH_TOKEN)
 from utils.logger import get_logger
@@ -346,6 +347,24 @@ class GoogleAuth:
     def disconnect(self) -> None:
         self.store.delete(GOOGLE_KEY)
 
+    def scopes(self) -> list[str]:
+        """Scopes the stored credential actually carries."""
+        data = self.stored() or {}
+        return [str(x) for x in (data.get("scopes") or [])]
+
+    def has_scope(self, scope: str) -> bool:
+        return scope in self.scopes()
+
+    def missing_scopes(self) -> list[str]:
+        """Scopes the app wants that this credential does not have.
+
+        A connection made before Drive browsing existed carries only the
+        spreadsheets scope. That connection still syncs perfectly well, so it is
+        not treated as broken - only the folder browser asks for a reconnect.
+        """
+        held = set(self.scopes())
+        return [s for s in GOOGLE_SCOPES if s not in held]
+
     def client_config(self) -> dict[str, Any]:
         """Client id/secret from a client_secrets.json or from the environment."""
         path = self.env.google_secrets_path()
@@ -494,8 +513,14 @@ class GoogleAuth:
             label = "Google account connected"
             data["account"] = label
             self.store.put(GOOGLE_KEY, data)
-        return ConnStatus(ConnState.CONNECTED, label, "") if creds else \
-            ConnStatus(ConnState.ERROR, label, "Google credentials could not be prepared.")
+        if not creds:
+            return ConnStatus(ConnState.ERROR, label, "Google credentials could not be prepared.")
+        detail = ""
+        if GOOGLE_SCOPE_DRIVE_METADATA in self.missing_scopes():
+            # Connected and fully able to sync; only folder browsing is unavailable.
+            detail = ("Reconnect to browse Drive by folder - this connection was made before that "
+                      "was available. Syncing works as it is.")
+        return ConnStatus(ConnState.CONNECTED, label, detail)
 
 
 # --------------------------------------------------------------------------- #

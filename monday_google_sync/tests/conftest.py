@@ -46,6 +46,30 @@ def clean_db():
     db.close_thread_connection()
 
 
+@pytest.fixture
+def pump(app):
+    """Pump the Qt event loop until a condition holds, or give up.
+
+    The dialogs do their Drive and diagnostic work on worker threads, so a tight
+    processEvents() loop can spin without ever letting the worker finish. This
+    sleeps between passes so the worker actually gets scheduled.
+    """
+    import time
+
+    def wait_for(condition, timeout: float = 10.0, interval: float = 0.02) -> bool:
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            app.processEvents()
+            if condition():
+                app.processEvents()
+                return True
+            time.sleep(interval)
+        app.processEvents()
+        return bool(condition())
+
+    return wait_for
+
+
 @pytest.fixture(scope="session")
 def app():
     """One QApplication for the whole session; Qt allows only one."""

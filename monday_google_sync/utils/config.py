@@ -15,7 +15,7 @@ from pathlib import Path
 
 APP_NAME = "Monday + Google Sheets Sync"
 APP_SLUG = "MondayGoogleSync"
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.1.0"
 ORG_NAME = "Twin Home Buyer"
 
 # Single-instance IPC endpoint (QLocalServer name).
@@ -82,11 +82,25 @@ MONDAY_OAUTH_TOKEN = "https://auth.monday.com/oauth2/token"
 # Least privilege: read boards, read users/account for the connection test.
 MONDAY_OAUTH_SCOPES = ["boards:read", "me:read"]
 
-# Least privilege: the app reads and writes the one spreadsheet the user names.
-# The narrower drive.file scope cannot open a pre-existing sheet the app did not
-# create, and the broader drive scope would grant access to every file, so the
-# spreadsheets scope is the correct middle ground.
-GOOGLE_SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+# Least privilege, in two parts.
+#
+# spreadsheets              read and write the spreadsheet the user names. The
+#                           narrower drive.file scope cannot open a pre-existing
+#                           sheet the app did not create, and the broader drive
+#                           scope would grant access to every file in the account.
+# drive.metadata.readonly   list folder and file *names*, so the user can browse
+#                           Drive to find their spreadsheet instead of pasting a
+#                           URL. It carries no ability to read file contents: the
+#                           app can see that a document exists and what it is
+#                           called, and nothing about what is inside it.
+GOOGLE_SCOPE_SHEETS = "https://www.googleapis.com/auth/spreadsheets"
+GOOGLE_SCOPE_DRIVE_METADATA = "https://www.googleapis.com/auth/drive.metadata.readonly"
+GOOGLE_SCOPES = [GOOGLE_SCOPE_SHEETS, GOOGLE_SCOPE_DRIVE_METADATA]
+
+# Drive item types the folder browser cares about.
+MIME_FOLDER = "application/vnd.google-apps.folder"
+MIME_SPREADSHEET = "application/vnd.google-apps.spreadsheet"
+MIME_SHORTCUT = "application/vnd.google-apps.shortcut"
 GOOGLE_OAUTH_LOOPBACK_PORTS = (8731, 8732, 8733, 8734, 0)
 
 HTTP_TIMEOUT = 30            # seconds, per request
