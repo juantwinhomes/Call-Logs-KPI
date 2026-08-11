@@ -104,40 +104,61 @@ campaign name often cannot settle on its own — those need a recorded contact m
 (read from the campaign wording where present, otherwise the `contact_method` field).
 Without one, the lead lands in the review queue rather than being assigned a guess.
 
-**Nothing is guessed.** A campaign that cannot settle a Standard CRM Source waits on the
-Classification page with the reason stated. Current sample data holds 81 such leads:
+**Nothing is guessed.** Run against the real logs, the classifier places **3,430 of 5,839
+records (58.7%)** and holds **2,409 (41.3%)** for review:
 
-| Reason | Leads |
+| Reason | Records |
 |---|---|
-| No CRM Source defined for Reddit Ads | 16 |
-| Campaign is empty | 15 |
-| Contact method unknown — Call or Web Form | 14 |
-| No campaign signal | 13 |
-| No CRM Source defined for Facebook / Meta Ads | 12 |
-| No CRM Source defined for direct mail with no format named | 11 |
+| No CRM Source defined for paid search with no platform named | **1,672** |
+| No campaign signal | 550 |
+| Contact method unknown — Call or Web Form | 139 |
+| No CRM Source defined for direct mail with no format named | 23 |
+| Outbound channel not identified | 15 |
+| Campaign is empty | 7 |
+| No CRM Source defined for Facebook / Meta Ads | 3 |
 
-**Unclassified leads still count.** All Master Sources includes the review bucket, so the
-company lead total stays true (835 for 2026, reconciling exactly against the raw record
-count and the sum of every master source). The dashboard states how many are unclassified
-rather than quietly dropping them.
+What it does place:
+
+| Standard CRM Source | Records |
+|---|---|
+| Direct Mail - Check | 1,353 |
+| PPL - Property Leads | 1,005 |
+| Direct Mail - Postcard | 555 |
+| PPL - Motivated Leads | 185 |
+| Direct Mail - Letter | 171 |
+| TV - Commercial - Call | 143 |
+| Outbound - Homeowner Text | 17 |
+| Organic - SEO - Call | 1 |
+
+**Unclassified records still count.** All Master Sources includes the review bucket, so the
+record total stays true — 5,839, reconciling exactly against the raw record count and the
+sum of every master source. The dashboard states how many are unclassified rather than
+quietly dropping them.
 
 **Manual overrides win.** Assigning a source on the Classification page is an override
 that auto-classification never touches. Only the explicit "Re-run auto-classification"
 button clears them, and it says how many it will discard.
 
-**Classifier self-test** runs at load: all 54 sample campaigns must resolve to their
-expected Standard CRM Source, and the result is shown on the Classification page. The
-rule table is listed there in priority order.
+The rule table is listed on the Classification page in priority order, alongside the
+campaigns still awaiting a rule.
 
-### Two decisions needed from you
+### Decisions needed before coverage improves
 
-1. **Facebook / Meta Ads and Reddit Ads have no Standard CRM Source** in the supplied map,
-   but campaigns for both exist. They are held for review rather than folded into
-   PPC - Google or PPC - Bing. Add leaves, or confirm they should be excluded.
-2. **TV now has sub-sources.** An earlier instruction said TV Commercial must have no
-   Sub-Source dropdown; the final map gives TV two (Call and Web Form). The final map is
-   implemented. MLS / Redfin is now the only master with a single CRM source, so its
-   Standard CRM Source control is suppressed instead.
+1. **PPC cannot be split.** All 1,672 paid-search records — almost all one campaign,
+   `PPC LEAD THB` — name no platform. `PPC - Google - Call`, `PPC - Google - Web Form`,
+   `PPC - Bing - Call` and `PPC - Bing - Web Form` are unfillable from these sheets. That
+   is 28.6% of all records.
+2. **550 records are direct mail with no format in the campaign name** — `Liens Area510`,
+   `NOD Area415`, `Liens Verification EQT 2` and 30 others. Their Lead Source column says
+   Direct Mail but nothing says postcard, letter or check.
+3. **`Equity Track INC (Website)` (71 records)** has no CRM source in the map.
+4. **`Realtor` as a bare campaign (23 records)** — Referral - Realtor / Professional, or
+   Outbound - Realtor Email? The campaign name alone does not say.
+5. **Facebook / Meta Ads (3 records)** has no CRM source in the map.
+6. **TV has sub-sources.** An earlier instruction said TV Commercial must have none; the
+   final map gives it Call and Web Form, and the final map is implemented. 139 TV records
+   sit in review because an outbound follow-up call does not reveal how the lead first
+   arrived. MLS / Redfin is now the only master with a single CRM source.
 
 ## Marketing cost is supplied, never modelled
 
