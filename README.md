@@ -113,34 +113,34 @@ campaign name often cannot settle on its own — those need a recorded contact m
 (read from the campaign wording where present, otherwise the `contact_method` field).
 Without one, the lead lands in the review queue rather than being assigned a guess.
 
-**Nothing is guessed.** Run against the real logs, the classifier places **3,225 of 5,551
-records (58.1%)** and holds **2,326 (41.9%)** for review:
+**Nothing is guessed.** Run against the real logs, the classifier places **2,962 of 5,132
+records (57.7%)** and holds **2,170 (42.3%)** for review:
 
 | Reason | Records |
 |---|---|
-| No CRM Source defined for paid search with no platform named | **1,610** |
-| No campaign signal | 537 |
-| Contact method unknown — Call or Web Form | 131 |
-| No CRM Source defined for direct mail with no format named | 23 |
+| No CRM Source defined for paid search with no platform named | **1,498** |
+| No campaign signal | 526 |
+| Contact method unknown — Call or Web Form | 118 |
 | Outbound channel not identified | 15 |
 | Campaign is empty | 7 |
 | No CRM Source defined for Facebook / Meta Ads | 3 |
+| No CRM Source defined for direct mail with no format named | 3 |
 
 What it does place:
 
 | Standard CRM Source | Records |
 |---|---|
-| Direct Mail - Check | 1,330 |
-| PPL - Property Leads | 905 |
-| Direct Mail - Postcard | 516 |
-| Direct Mail - Letter | 163 |
-| PPL - Motivated Leads | 160 |
-| TV - Commercial - Call | 134 |
-| Outbound - Homeowner Text | 16 |
+| Direct Mail - Check | 1,298 |
+| PPL - Property Leads | 759 |
+| Direct Mail - Postcard | 474 |
+| Direct Mail - Letter | 165 |
+| PPL - Motivated Leads | 128 |
+| TV - Commercial - Call | 124 |
+| Outbound - Homeowner Text | 13 |
 | Organic - SEO - Call | 1 |
 
 **Unclassified records still count.** All Master Sources includes the review bucket, so the
-record total stays true — 5,551, reconciling exactly against the raw record count and the
+record total stays true — 5,132, reconciling exactly against the raw record count and the
 sum of every master source. The dashboard states how many are unclassified rather than
 quietly dropping them.
 
@@ -153,11 +153,11 @@ campaigns still awaiting a rule.
 
 ### Decisions needed before coverage improves
 
-1. **PPC cannot be split.** All 1,610 paid-search records — almost all one campaign,
+1. **PPC cannot be split.** All 1,498 paid-search records — almost all one campaign,
    `PPC LEAD THB` — name no platform. `PPC - Google - Call`, `PPC - Google - Web Form`,
    `PPC - Bing - Call` and `PPC - Bing - Web Form` are unfillable from these sheets. That
-   is 29.0% of all records.
-2. **537 records are direct mail with no format in the campaign name** — `Liens Area510`,
+   is 29.2% of all records.
+2. **526 records are direct mail with no format in the campaign name** — `Liens Area510`,
    `NOD Area415`, `Liens Verification EQT 2` and 30 others. Their Lead Source column says
    Direct Mail but nothing says postcard, letter or check.
 3. **`Equity Track INC (Website)`** has no CRM source in the map.
@@ -165,7 +165,7 @@ campaigns still awaiting a rule.
    Outbound - Realtor Email? The campaign name alone does not say.
 5. **Facebook / Meta Ads (3 records)** has no CRM source in the map.
 6. **TV has sub-sources.** An earlier instruction said TV Commercial must have none; the
-   final map gives it Call and Web Form, and the final map is implemented. 131 TV records
+   final map gives it Call and Web Form, and the final map is implemented. 118 TV records
    sit in review because an outbound follow-up call does not reveal how the lead first
    arrived. MLS / Redfin is now the only master with a single CRM source.
 
