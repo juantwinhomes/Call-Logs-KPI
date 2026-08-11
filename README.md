@@ -35,7 +35,7 @@ Nothing in this app connects to Google Drive or Monday.com yet.
 **Call activity — the 2026 Call Logs folder in Google Drive**
 
 All 32 weekly sheets, read 11 August 2026. The app counts the **detailed per-call log**
-that sits beneath the summary blocks in each sheet — 5,839 individual records carrying
+that sits beneath the summary blocks in each sheet — 5,551 distinct records carrying
 Date, Lead Source, Campaign, Direction, Caller Type, Lead Status, Disposition and Agent.
 
 | Measure | 2026 |
@@ -92,8 +92,8 @@ Existing Interested Lead, Unresponsive, Invalid, Not Interested, Do not Mail) an
 has been given for which of those counts as qualified.
 
 Appointment dispositions are reported **separately, by their exact sheet wording**
-(`Appointment Booked (H)` 140, `Pending Appointment` 47, `Confirmed Appointment` 31,
-`Rescheduled Appointment` 23, `Canceled Appointment` 9, `Appointment Confirmed` 4) rather
+(`Appointment Booked (H)` 128, `Pending Appointment` 40, `Confirmed Appointment` 26,
+`Rescheduled Appointment` 20, `Canceled Appointment` 9, `Appointment Confirmed` 4) rather
 than summed into one "appointments" figure the sheets do not define.
 
 ## Lead Source is derived from the Campaign
@@ -116,9 +116,9 @@ records (58.1%)** and holds **2,326 (41.9%)** for review:
 
 | Reason | Records |
 |---|---|
-| No CRM Source defined for paid search with no platform named | **1,672** |
-| No campaign signal | 550 |
-| Contact method unknown — Call or Web Form | 139 |
+| No CRM Source defined for paid search with no platform named | **1,610** |
+| No campaign signal | 537 |
+| Contact method unknown — Call or Web Form | 131 |
 | No CRM Source defined for direct mail with no format named | 23 |
 | Outbound channel not identified | 15 |
 | Campaign is empty | 7 |
@@ -128,17 +128,17 @@ What it does place:
 
 | Standard CRM Source | Records |
 |---|---|
-| Direct Mail - Check | 1,353 |
-| PPL - Property Leads | 1,005 |
-| Direct Mail - Postcard | 555 |
-| PPL - Motivated Leads | 185 |
-| Direct Mail - Letter | 171 |
-| TV - Commercial - Call | 143 |
-| Outbound - Homeowner Text | 17 |
+| Direct Mail - Check | 1,330 |
+| PPL - Property Leads | 905 |
+| Direct Mail - Postcard | 516 |
+| Direct Mail - Letter | 163 |
+| PPL - Motivated Leads | 160 |
+| TV - Commercial - Call | 134 |
+| Outbound - Homeowner Text | 16 |
 | Organic - SEO - Call | 1 |
 
 **Unclassified records still count.** All Master Sources includes the review bucket, so the
-record total stays true — 5,839, reconciling exactly against the raw record count and the
+record total stays true — 5,551, reconciling exactly against the raw record count and the
 sum of every master source. The dashboard states how many are unclassified rather than
 quietly dropping them.
 
@@ -151,19 +151,19 @@ campaigns still awaiting a rule.
 
 ### Decisions needed before coverage improves
 
-1. **PPC cannot be split.** All 1,672 paid-search records — almost all one campaign,
+1. **PPC cannot be split.** All 1,610 paid-search records — almost all one campaign,
    `PPC LEAD THB` — name no platform. `PPC - Google - Call`, `PPC - Google - Web Form`,
    `PPC - Bing - Call` and `PPC - Bing - Web Form` are unfillable from these sheets. That
-   is 28.6% of all records.
-2. **550 records are direct mail with no format in the campaign name** — `Liens Area510`,
+   is 29.0% of all records.
+2. **537 records are direct mail with no format in the campaign name** — `Liens Area510`,
    `NOD Area415`, `Liens Verification EQT 2` and 30 others. Their Lead Source column says
    Direct Mail but nothing says postcard, letter or check.
-3. **`Equity Track INC (Website)` (71 records)** has no CRM source in the map.
-4. **`Realtor` as a bare campaign (23 records)** — Referral - Realtor / Professional, or
+3. **`Equity Track INC (Website)`** has no CRM source in the map.
+4. **`Realtor` as a bare campaign** — Referral - Realtor / Professional, or
    Outbound - Realtor Email? The campaign name alone does not say.
 5. **Facebook / Meta Ads (3 records)** has no CRM source in the map.
 6. **TV has sub-sources.** An earlier instruction said TV Commercial must have none; the
-   final map gives it Call and Web Form, and the final map is implemented. 139 TV records
+   final map gives it Call and Web Form, and the final map is implemented. 131 TV records
    sit in review because an outbound follow-up call does not reveal how the lead first
    arrived. MLS / Redfin is now the only master with a single CRM source.
 
