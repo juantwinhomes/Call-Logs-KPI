@@ -28,58 +28,66 @@ single self-contained file.
 Per the build prompt, Phase 2 does not begin until the dashboard is approved.
 Nothing in this app connects to Google Drive or Monday.com yet.
 
-## What is real and what is sample
+## Where every number comes from
 
-This distinction is enforced in the code and stated on the screen. It matters:
-mixing the two silently would produce KPIs that look authoritative and are not.
+**There is no sample data in this app.** Every figure is counted from a real source.
 
-**Real data**
+**Call activity — the 2026 Call Logs folder in Google Drive**
 
-- **Direct mail cost and volume** — from the Red Stone Upload board (Monday.com board
-  `18392647066`), quantity and cost exactly as recorded, re-verified against a live
-  board read. These map to two Standard CRM Sources:
+All 32 weekly sheets, read 11 August 2026. The app counts the **detailed per-call log**
+that sits beneath the summary blocks in each sheet — 5,839 individual records carrying
+Date, Lead Source, Campaign, Direction, Caller Type, Lead Status, Disposition and Agent.
 
-  | Standard CRM Source | Jobs | Pieces | Cost | Per piece |
-  |---|---|---|---|---|
-  | **Direct Mail - Postcard** | 13 | **58,107** | **$28,212.76** | **$0.4855** |
-  | **Direct Mail - Letter** | 1 | 293 | $327.83 | $1.1189 |
-  | _in production, not mailed_ | 1 | 3,515 | $1,947.49 | $0.5541 |
+| Measure | 2026 |
+|---|---|
+| Call records | **5,839** |
+| Inbound / Outbound / Missed | 1,711 / 4,088 / 3 |
+| Direction not recorded | 37 |
+| First Time / Repeat / Follow Up Responder | 1,103 / 1,101 / 3,556 |
+| `Appointment Booked (H)` | 140 |
+| Unique phone numbers | 2,038 |
+| Distinct Lead Status values | 10 |
+| Distinct Disposition values | 99 |
 
-  The letter job is a costed CRM source in its own right, not an exclusion — at 2.3× the
-  postcard rate it simply must not be blended into postcard KPIs.
+**Mail cost and volume — Red Stone Upload board (Monday.com `18392647066`)**
 
-  Only **mailed** jobs feed Pieces Mailed and the cost KPIs. `Relaunch_13` sits in
-  🚀 Uploaded / In Production, so its spend is committed but its pieces have not gone
-  out; counting it would have overstated August by 3,515 pieces — 77% above the 4,583
-  actually mailed. It moves into the mailed figure automatically once the board marks
-  it Done with a mail date.
+| Standard CRM Source | Jobs | Pieces | Cost | Per piece |
+|---|---|---|---|---|
+| Direct Mail - Postcard | 13 | 58,107 | $28,212.76 | $0.4855 |
+| Direct Mail - Letter | 1 | 293 | $327.83 | $1.1189 |
+| Direct Mail - Check | **none on the board** | — | — | — |
+| _in production, not mailed_ | 1 | 3,515 | $1,947.49 | — |
 
-  By month mailed: May 3,752 / $2,130.56 · Jun 30,976 / $14,945.56 ·
-  Jul 18,796 / $8,922.26 · Aug 4,583 / $2,214.38.
+Only jobs the board marks Done count as mailed.
 
-**Not supplied at all — and not estimated**
+### The summary blocks and the detail log disagree
 
-- **Revenue.** No revenue figure exists in any source read so far: the call logs carry
-  calls, leads, dispositions and appointments but no money, and the Red Stone board
-  carries quantity and cost only. Gross Revenue, Net Revenue and ROI therefore report
-  "awaiting revenue data" rather than a number. Acquisition and contract *counts* still
-  report, because those are volumes rather than money.
+Each sheet has both. They do not match, and which is authoritative has not been decided.
+This app counts the detail log; the Data Sync page shows the gap side by side.
 
-  Set `REVENUE_SUPPLIED = true` and populate `gross_revenue` / `net_revenue` on the
-  records once real figures arrive. Nothing else changes.
+| | Summary blocks | Detail log (used) |
+|---|---|---|
+| Total calls | 4,878 | **5,839** |
+| Inbound | 1,512 | **1,711** |
+| Outbound | 3,357 | **4,088** |
+| First time callers | 1,027 | **1,103** |
 
-**Sample data**
+### Not reported, and not estimated
 
-- Lead, call, appointment, offer, contract and acquisition volumes
-- Every source's volume profile
+These are on the original KPI list but do not exist in the call logs. They render as
+"not reported" with the reason stated, on the Outcomes page.
 
-Volumes are anchored to Twin Home Buyer's real 2026 shape so the prototype reads as
-familiar — roughly 119 leads and 610 calls a month, ~4 acquisitions a month — but they
-are generated, not measured.
+Qualified Leads · Offers Made · Contracts · Acquired Properties · Gross Revenue ·
+Net Revenue · ROI · Cost Per Lead · Cost Per Qualified Lead · Cost Per Acquisition
 
-Because of this split, any KPI that divides real cost by sample volumes — Response Rate,
-Cost Per Call, Cost Per Acquisition — is structurally correct but not yet a true number.
-The Direct Mail page says so directly, at the top.
+`Qualified` has no field in the sheets — they record Lead Status (New Interested Lead,
+Existing Interested Lead, Unresponsive, Invalid, Not Interested, Do not Mail) and no rule
+has been given for which of those counts as qualified.
+
+Appointment dispositions are reported **separately, by their exact sheet wording**
+(`Appointment Booked (H)` 140, `Pending Appointment` 47, `Confirmed Appointment` 31,
+`Rescheduled Appointment` 23, `Canceled Appointment` 9, `Appointment Confirmed` 4) rather
+than summed into one "appointments" figure the sheets do not define.
 
 ## Lead Source is derived from the Campaign
 
