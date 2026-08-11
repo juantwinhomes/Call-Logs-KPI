@@ -1,6 +1,6 @@
 @echo off
 REM ===========================================================================
-REM  Build MondayGoogleSync.exe
+REM  Build TwinCallTracker.exe
 REM
 REM  Usage, from a Command Prompt in this folder:
 REM
@@ -14,7 +14,7 @@ REM ===========================================================================
 setlocal EnableDelayedExpansion
 cd /d "%~dp0"
 
-set APP=MondayGoogleSync
+set APP=TwinCallTracker
 set VENV=.venv
 set PY=%VENV%\Scripts\python.exe
 

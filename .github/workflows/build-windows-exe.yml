@@ -1,4 +1,4 @@
-name: Build MondayGoogleSync.exe
+name: Build TwinCallTracker.exe
 
 # Builds the Windows executable on a real Windows runner, because PyInstaller
 # bundles the interpreter and DLLs of the platform it runs on and cannot
@@ -15,13 +15,13 @@ on:
         type: boolean
         default: true
       version:
-        description: "Version tag for the release (e.g. v1.0.0)"
+        description: "Version tag for the release (e.g. v1.2.0)"
         type: string
-        default: "v1.0.0"
+        default: "v1.2.0"
   push:
     branches: ["**"]
     paths:
-      - "monday_google_sync/**"
+      - "twin_call_tracker/**"
       - ".github/workflows/build-windows-exe.yml"
 
 permissions:
@@ -32,7 +32,7 @@ jobs:
     runs-on: windows-latest
     defaults:
       run:
-        working-directory: monday_google_sync
+        working-directory: twin_call_tracker
         shell: pwsh
 
     steps:
@@ -44,7 +44,7 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-          cache-dependency-path: monday_google_sync/requirements.txt
+          cache-dependency-path: twin_call_tracker/requirements.txt
 
       - name: Install dependencies
         run: |
@@ -57,74 +57,74 @@ jobs:
         run: python -m pytest tests -q
 
       - name: Build the one-folder application
-        run: python -m PyInstaller MondayGoogleSync.spec --noconfirm --clean
+        run: python -m PyInstaller TwinCallTracker.spec --noconfirm --clean
 
       - name: Build the single-file application
         env:
           BUILD_ONEFILE: "1"
         run: |
-          Move-Item -Path dist\MondayGoogleSync -Destination dist\_onedir -Force
-          python -m PyInstaller MondayGoogleSync.spec --noconfirm --clean
-          Move-Item -Path dist\_onedir -Destination dist\MondayGoogleSync -Force
+          Move-Item -Path dist\TwinCallTracker -Destination dist\_onedir -Force
+          python -m PyInstaller TwinCallTracker.spec --noconfirm --clean
+          Move-Item -Path dist\_onedir -Destination dist\TwinCallTracker -Force
 
       - name: Confirm both executables exist
         run: |
-          $folderExe = "dist\MondayGoogleSync\MondayGoogleSync.exe"
-          $singleExe = "dist\MondayGoogleSync.exe"
+          $folderExe = "dist\TwinCallTracker\TwinCallTracker.exe"
+          $singleExe = "dist\TwinCallTracker.exe"
           if (-not (Test-Path $folderExe)) { throw "one-folder build is missing" }
           if (-not (Test-Path $singleExe)) { throw "one-file build is missing" }
           "One-folder: {0:N1} MB" -f ((Get-Item $folderExe).Length / 1MB)
           "One-file:   {0:N1} MB" -f ((Get-Item $singleExe).Length / 1MB)
-          "Folder total: {0:N1} MB" -f (((Get-ChildItem dist\MondayGoogleSync -Recurse |
+          "Folder total: {0:N1} MB" -f (((Get-ChildItem dist\TwinCallTracker -Recurse |
               Measure-Object Length -Sum).Sum) / 1MB)
 
       - name: Smoke test - the .exe starts, migrates its database and writes a log
         run: |
-          $env:MGS_DATA_DIR = "$env:RUNNER_TEMP\mgs-smoke"
-          New-Item -ItemType Directory -Force -Path $env:MGS_DATA_DIR | Out-Null
-          $p = Start-Process -FilePath "dist\MondayGoogleSync\MondayGoogleSync.exe" -PassThru
+          $env:TCT_DATA_DIR = "$env:RUNNER_TEMP\tct-smoke"
+          New-Item -ItemType Directory -Force -Path $env:TCT_DATA_DIR | Out-Null
+          $p = Start-Process -FilePath "dist\TwinCallTracker\TwinCallTracker.exe" -PassThru
           Start-Sleep -Seconds 25
           if ($p.HasExited) { throw "the application exited on its own with code $($p.ExitCode)" }
           Stop-Process -Id $p.Id -Force
           Start-Sleep -Seconds 2
-          $log = Join-Path $env:MGS_DATA_DIR "logs\app.log"
+          $log = Join-Path $env:TCT_DATA_DIR "logs\app.log"
           if (-not (Test-Path $log)) { throw "no log file was written - the app did not start" }
           Get-Content $log
           if (-not (Select-String -Path $log -Pattern "Window shown" -Quiet)) {
             throw "the window never opened"
           }
-          if (-not (Test-Path (Join-Path $env:MGS_DATA_DIR "sync_state.sqlite3"))) {
+          if (-not (Test-Path (Join-Path $env:TCT_DATA_DIR "sync_state.sqlite3"))) {
             throw "the database was not created"
           }
           "Smoke test passed."
 
       - name: Confirm the log contains no credentials
         run: |
-          $log = Join-Path "$env:RUNNER_TEMP\mgs-smoke" "logs\app.log"
+          $log = Join-Path "$env:RUNNER_TEMP\tct-smoke" "logs\app.log"
           $bad = Select-String -Path $log -Pattern "access_token|refresh_token|client_secret|Bearer "
           if ($bad) { $bad; throw "the log contains something credential-shaped" }
           "Log is clean."
 
       - name: Package the one-folder build
         run: |
-          Copy-Item README.md dist\MondayGoogleSync\README.md
-          Copy-Item .env.example dist\MondayGoogleSync\.env.example
-          Compress-Archive -Path dist\MondayGoogleSync\* `
-                           -DestinationPath dist\MondayGoogleSync-windows-folder.zip -Force
+          Copy-Item README.md dist\TwinCallTracker\README.md
+          Copy-Item .env.example dist\TwinCallTracker\.env.example
+          Compress-Archive -Path dist\TwinCallTracker\* `
+                           -DestinationPath dist\TwinCallTracker-windows-folder.zip -Force
 
       - name: Upload the one-folder build
         uses: actions/upload-artifact@v4
         with:
-          name: MondayGoogleSync-windows-folder
-          path: monday_google_sync/dist/MondayGoogleSync-windows-folder.zip
+          name: TwinCallTracker-windows-folder
+          path: twin_call_tracker/dist/TwinCallTracker-windows-folder.zip
           retention-days: 90
           if-no-files-found: error
 
       - name: Upload the single-file build
         uses: actions/upload-artifact@v4
         with:
-          name: MondayGoogleSync-windows-single-exe
-          path: monday_google_sync/dist/MondayGoogleSync.exe
+          name: TwinCallTracker-windows-single-exe
+          path: twin_call_tracker/dist/TwinCallTracker.exe
           retention-days: 90
           if-no-files-found: error
 
@@ -133,25 +133,25 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.version }}
-          name: Monday + Google Sheets Sync ${{ inputs.version }}
+          name: Twin Call Tracker ${{ inputs.version }}
           files: |
-            monday_google_sync/dist/MondayGoogleSync.exe
-            monday_google_sync/dist/MondayGoogleSync-windows-folder.zip
+            twin_call_tracker/dist/TwinCallTracker.exe
+            twin_call_tracker/dist/TwinCallTracker-windows-folder.zip
           body: |
             ## Downloads
 
-            **`MondayGoogleSync.exe`** — one single file. Download, double-click, done.
+            **`TwinCallTracker.exe`** — one single file. Download, double-click, done.
             Slower to start because it unpacks itself each launch, and Windows
             SmartScreen may warn the first time because it is not code-signed.
 
-            **`MondayGoogleSync-windows-folder.zip`** — unzip anywhere and run
-            `MondayGoogleSync.exe` inside. Starts faster. This is the recommended
+            **`TwinCallTracker-windows-folder.zip`** — unzip anywhere and run
+            `TwinCallTracker.exe` inside. Starts faster. This is the recommended
             shape for everyday office use.
 
             ## Before the first run
 
             1. Put `client_secrets.json` from the Google Cloud console in
-               `%LOCALAPPDATA%\MondayGoogleSync\` — the README's *Google setup*
+               `%LOCALAPPDATA%\TwinCallTracker\` — the README's *Google setup*
                section has the steps, and the app's About screen opens the folder
                for you.
             2. Share the spreadsheet with the Google account you will connect,

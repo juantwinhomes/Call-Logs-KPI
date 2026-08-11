@@ -268,3 +268,63 @@ def test_a_keyring_that_does_not_persist_falls_back_to_a_key_file():
     store.put("monday", {"access_token": "PersistedThroughAKeyFile"})
     assert key_file_path().is_file(), "the fallback key file should exist"
     assert SecretStore().get("monday")["access_token"] == "PersistedThroughAKeyFile"
+
+
+def test_state_from_the_previous_application_name_is_carried_over(tmp_path, monkeypatch):
+    """Renaming the app must not appear to lose the user's whole setup.
+
+    A 1.1.0 installation kept its files under MondayGoogleSync. On first run as
+    Twin Call Tracker the folder is copied across, so settings, sync state and the
+    encrypted credentials are still there.
+    """
+    import importlib
+    from utils import config
+
+    home = tmp_path / "home"
+    (home).mkdir()
+    monkeypatch.delenv("TCT_DATA_DIR", raising=False)
+    monkeypatch.delenv("MGS_DATA_DIR", raising=False)
+    monkeypatch.setenv("XDG_DATA_HOME", str(home))
+    monkeypatch.setattr(config.sys, "platform", "linux", raising=False)
+
+    legacy = home / config.LEGACY_APP_SLUG
+    (legacy / "logs").mkdir(parents=True)
+    (legacy / "sync_state.sqlite3").write_bytes(b"old database")
+    (legacy / "credentials.enc").write_bytes(b"gAAAAAencrypted")
+    (legacy / "logs" / "app.log").write_text("previous log", encoding="utf-8")
+
+    config._migrated = False
+    new_dir = config.data_dir()
+
+    assert new_dir.name == config.APP_SLUG
+    assert (new_dir / "sync_state.sqlite3").read_bytes() == b"old database"
+    assert (new_dir / "credentials.enc").read_bytes() == b"gAAAAAencrypted"
+    assert (new_dir / "logs" / "app.log").read_text(encoding="utf-8") == "previous log"
+    # Copied, not moved, so an older build still finds its own data.
+    assert (legacy / "sync_state.sqlite3").is_file()
+    importlib.reload(config)
+
+
+def test_the_carry_over_never_overwrites_existing_state(tmp_path, monkeypatch):
+    import importlib
+    from utils import config
+
+    home = tmp_path / "home2"
+    home.mkdir()
+    monkeypatch.delenv("TCT_DATA_DIR", raising=False)
+    monkeypatch.delenv("MGS_DATA_DIR", raising=False)
+    monkeypatch.setenv("XDG_DATA_HOME", str(home))
+    monkeypatch.setattr(config.sys, "platform", "linux", raising=False)
+
+    legacy = home / config.LEGACY_APP_SLUG
+    legacy.mkdir(parents=True)
+    (legacy / "sync_state.sqlite3").write_bytes(b"old")
+    current = home / config.APP_SLUG
+    current.mkdir(parents=True)
+    (current / "sync_state.sqlite3").write_bytes(b"in use")
+
+    config._migrated = False
+    config.data_dir()
+
+    assert (current / "sync_state.sqlite3").read_bytes() == b"in use"
+    importlib.reload(config)

@@ -24,7 +24,7 @@ log = get_logger("about")
 # Left blank so a fresh install never phones home. Set it in the environment as
 # MGS_UPDATE_URL, or edit this constant when an internal endpoint exists.
 import os
-UPDATE_URL = os.environ.get("MGS_UPDATE_URL", "").strip()
+UPDATE_URL = os.environ.get("TCT_UPDATE_URL", "").strip()
 
 
 class AboutPage(QWidget):

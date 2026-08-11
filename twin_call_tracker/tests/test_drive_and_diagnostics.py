@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import pytest
 
-from services.google_drive_service import (PSEUDO_ROOTS, ROOT_MY_DRIVE, ROOT_SHARED_DRIVES,
-                                           ROOT_SHARED_WITH_ME, DriveItem, GoogleDriveService,
+from services.google_drive_service import (ROOT_MY_DRIVE, ROOT_SHARED_DRIVES,
+                                           ROOT_SHARED_WITH_ME, GoogleDriveService,
                                            _escape, _to_item)
 from utils.config import (GOOGLE_SCOPE_DRIVE_METADATA, GOOGLE_SCOPE_SHEETS, MIME_FOLDER,
                           MIME_SHORTCUT, MIME_SPREADSHEET)
@@ -472,7 +472,7 @@ def test_the_report_is_plain_text_and_carries_no_secrets():
 def test_every_failing_check_offers_a_fix():
     """A problem with no instruction is useless to an office user."""
     from services.auth_service import ConnState
-    from services.diagnostics import FAIL, run_diagnostics
+    from services.diagnostics import run_diagnostics
     report = run_diagnostics(
         _DiagAuth(monday_state=ConnState.EXPIRED, google_state=ConnState.NOT_CONNECTED),
         _settings_with_config(False))

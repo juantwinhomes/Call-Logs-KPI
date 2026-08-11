@@ -1,4 +1,4 @@
-# Monday + Google Sheets Sync - runtime dependencies
+# Twin Call Tracker - runtime dependencies
 #
 # Install with:   pip install -r requirements.txt
 # Python 3.10 or newer is required (3.11 or 3.12 recommended).

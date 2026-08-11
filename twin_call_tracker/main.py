@@ -48,7 +48,7 @@ def main() -> int:
     from utils.config import APP_NAME, APP_VERSION, IPC_SOCKET_NAME, ORG_NAME, data_dir
     from utils.logger import setup_logging
 
-    log = setup_logging(verbose=bool(os.environ.get("MGS_DEBUG")))
+    log = setup_logging(verbose=bool(os.environ.get("TCT_DEBUG") or os.environ.get("MGS_DEBUG")))
     sys.excepthook = _excepthook
 
     QApplication.setApplicationName(APP_NAME)
@@ -71,7 +71,7 @@ def main() -> int:
         probe.waitForBytesWritten(400)
         probe.disconnectFromServer()
         QMessageBox.information(None, APP_NAME,
-                                "Monday + Google Sheets Sync is already running.")
+                                "Twin Call Tracker is already running.")
         return 0
     # A stale socket file is left behind if a previous run was killed.
     QLocalServer.removeServer(IPC_SOCKET_NAME)

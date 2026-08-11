@@ -1,14 +1,14 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""PyInstaller specification for MondayGoogleSync.exe.
+"""PyInstaller specification for TwinCallTracker.exe.
 
 Two build shapes, selected by the BUILD_ONEFILE environment variable:
 
-  one-folder (default)  dist\\MondayGoogleSync\\MondayGoogleSync.exe
+  one-folder (default)  dist\\TwinCallTracker\\TwinCallTracker.exe
       Recommended for production. Starts faster, and support staff can see the
       files, so a missing dependency is obvious rather than mysterious.
 
   one-file  (BUILD_ONEFILE=1)
-      dist\\MondayGoogleSync.exe, a single file that unpacks to a temporary
+      dist\\TwinCallTracker.exe, a single file that unpacks to a temporary
       folder on each launch. Convenient to copy around, slower to start, and
       some antivirus products are suspicious of it.
 
@@ -18,7 +18,7 @@ import os
 from PyInstaller.utils.hooks import collect_submodules
 
 ONEFILE = os.environ.get("BUILD_ONEFILE", "") == "1"
-APP_NAME = "MondayGoogleSync"
+APP_NAME = "TwinCallTracker"
 
 block_cipher = None
 

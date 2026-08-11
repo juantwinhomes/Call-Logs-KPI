@@ -4,7 +4,7 @@ Settings live in SQLite (see database.models.SettingsStore); this module owns th
 non-secret constants and the on-disk layout, and nothing here ever holds a token.
 
 When frozen by PyInstaller the executable directory is read-only in a normal
-install, so all writable state goes under %LOCALAPPDATA%\\MondayGoogleSync.
+install, so all writable state goes under %LOCALAPPDATA%\\TwinCallTracker.
 """
 from __future__ import annotations
 
@@ -13,13 +13,18 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-APP_NAME = "Monday + Google Sheets Sync"
-APP_SLUG = "MondayGoogleSync"
-APP_VERSION = "1.1.0"
+APP_NAME = "Twin Call Tracker"
+APP_SLUG = "TwinCallTracker"
+APP_VERSION = "1.2.0"
 ORG_NAME = "Twin Home Buyer"
 
+# The name the app shipped under before 1.2.0. Kept so an existing installation's
+# settings, sync state and saved credentials are carried over rather than
+# orphaned - see data_dir() and utils.security.
+LEGACY_APP_SLUG = "MondayGoogleSync"
+
 # Single-instance IPC endpoint (QLocalServer name).
-IPC_SOCKET_NAME = "MondayGoogleSync.singleinstance"
+IPC_SOCKET_NAME = "TwinCallTracker.singleinstance"
 
 # --------------------------------------------------------------------------- #
 # Paths
@@ -37,21 +42,66 @@ def bundle_dir() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
+def _dir_for(slug: str) -> Path:
+    """Where a given application name keeps its writable state."""
+    if sys.platform.startswith("win"):
+        base = os.environ.get("LOCALAPPDATA") or os.environ.get("APPDATA")
+        return Path(base or Path.home()) / slug
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / slug
+    base = os.environ.get("XDG_DATA_HOME")
+    return Path(base) / slug if base else Path.home() / ".local" / "share" / slug
+
+
+_migrated = False
+
+
 def data_dir() -> Path:
-    """Writable per-user application directory."""
-    override = os.environ.get("MGS_DATA_DIR")
+    """Writable per-user application directory, carrying over the old one once."""
+    global _migrated
+    override = os.environ.get("TCT_DATA_DIR") or os.environ.get("MGS_DATA_DIR")
     if override:
         p = Path(override).expanduser()
-    elif sys.platform.startswith("win"):
-        base = os.environ.get("LOCALAPPDATA") or os.environ.get("APPDATA")
-        p = Path(base or Path.home()) / APP_SLUG
-    elif sys.platform == "darwin":
-        p = Path.home() / "Library" / "Application Support" / APP_SLUG
-    else:
-        base = os.environ.get("XDG_DATA_HOME")
-        p = Path(base) / APP_SLUG if base else Path.home() / ".local" / "share" / APP_SLUG
+        p.mkdir(parents=True, exist_ok=True)
+        return p
+
+    p = _dir_for(APP_SLUG)
+    if not _migrated:
+        _migrated = True
+        _carry_over_legacy_data(p)
     p.mkdir(parents=True, exist_ok=True)
     return p
+
+
+def _carry_over_legacy_data(new_dir: Path) -> None:
+    """Copy an older installation's state across on first run under the new name.
+
+    Renaming the application would otherwise strand the settings, the sync
+    checkpoint and the saved credentials in a folder nothing looks at any more,
+    and the user would appear to have lost their whole setup. The old folder is
+    copied rather than moved, so going back to an earlier build still works.
+    """
+    import shutil
+
+    legacy = _dir_for(LEGACY_APP_SLUG)
+    if legacy == new_dir or not legacy.is_dir():
+        return
+    # Only when there is nothing here yet - never overwrite live state.
+    if new_dir.is_dir() and any(new_dir.iterdir()):
+        return
+    try:
+        new_dir.mkdir(parents=True, exist_ok=True)
+        for item in legacy.iterdir():
+            target = new_dir / item.name
+            if target.exists():
+                continue
+            if item.is_dir():
+                shutil.copytree(item, target)
+            else:
+                shutil.copy2(item, target)
+    except OSError:
+        # A failed carry-over is not fatal: the user reconnects and reconfigures.
+        pass
 
 
 def log_dir() -> Path:

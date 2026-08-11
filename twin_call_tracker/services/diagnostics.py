@@ -55,7 +55,7 @@ class Report:
 
     def as_text(self) -> str:
         lines = [
-            "MONDAY + GOOGLE SHEETS SYNC - DIAGNOSTIC REPORT",
+            "TWIN CALL TRACKER - DIAGNOSTIC REPORT",
             "=" * 62,
             f"Generated : {self.generated_at}",
             f"Verdict   : {self.verdict}",

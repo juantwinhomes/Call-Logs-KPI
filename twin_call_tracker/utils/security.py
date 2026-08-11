@@ -20,12 +20,16 @@ from typing import Any
 
 from cryptography.fernet import Fernet, InvalidToken
 
-from utils.config import APP_SLUG, key_file_path, token_store_path
+from utils.config import APP_SLUG, LEGACY_APP_SLUG, key_file_path, token_store_path
 from utils.logger import get_logger
 
 log = get_logger("security")
 
 _KEYRING_SERVICE = f"{APP_SLUG}.encryption"
+# The service name the key was filed under before the app was renamed. Without
+# this the copied credentials.enc would be undecryptable and every user would
+# silently have to reconnect both accounts.
+_LEGACY_KEYRING_SERVICE = f"{LEGACY_APP_SLUG}.encryption"
 _KEYRING_USER = "fernet-key"
 _lock = threading.RLock()
 
@@ -60,6 +64,16 @@ def _key_from_keyring() -> bytes | None:
         existing = kr.get_password(_KEYRING_SERVICE, _KEYRING_USER)
         if existing:
             return existing.encode("ascii")
+        # An installation from before the rename filed its key under the old name.
+        inherited = kr.get_password(_LEGACY_KEYRING_SERVICE, _KEYRING_USER)
+        if inherited:
+            try:
+                kr.set_password(_KEYRING_SERVICE, _KEYRING_USER, inherited)
+                log.info("Carried the encryption key over from the previous "
+                         "application name, so saved connections still work")
+            except Exception:
+                pass          # reading it is enough; re-filing is a convenience
+            return inherited.encode("ascii")
         key = Fernet.generate_key()
         kr.set_password(_KEYRING_SERVICE, _KEYRING_USER, key.decode("ascii"))
         # Some backends accept a write and store nothing - a null backend, or a

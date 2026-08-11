@@ -1,10 +1,10 @@
-# Monday + Google Sheets Sync
+# Twin Call Tracker
 
 A Windows desktop application that reads a Monday.com board and keeps a Google
 Sheet in step with it. One button does the work:
 
 ```
-Open MondayGoogleSync.exe  →  Click REFRESH / CHECK FOR UPDATES  →  the sheet is updated
+Open TwinCallTracker.exe  →  Click REFRESH / CHECK FOR UPDATES  →  the sheet is updated
 ```
 
 It connects to **Monday.com** and **Google Sheets** and nothing else. It only ever
@@ -77,8 +77,8 @@ produced on a Windows machine by GitHub Actions and attached to the run:
 
    | Artifact | What it is |
    |---|---|
-   | `MondayGoogleSync-windows-folder` | a zip — unzip anywhere and run `MondayGoogleSync.exe` inside. **Recommended**: starts faster, and a missing file is visible rather than mysterious. |
-   | `MondayGoogleSync-windows-single-exe` | one single `.exe`. Simplest to hand around; slower to start because it unpacks itself each launch. |
+   | `TwinCallTracker-windows-folder` | a zip — unzip anywhere and run `TwinCallTracker.exe` inside. **Recommended**: starts faster, and a missing file is visible rather than mysterious. |
+   | `TwinCallTracker-windows-single-exe` | one single `.exe`. Simplest to hand around; slower to start because it unpacks itself each launch. |
 
 You must be signed in to GitHub to download an artifact — that is a GitHub rule,
 not a choice this project made. If a run was started by hand with
@@ -100,12 +100,12 @@ build.
 
 ## Install for daily use
 
-1. Copy the whole `MondayGoogleSync` folder from the download (or from `dist\`
+1. Copy the whole `TwinCallTracker` folder from the download (or from `dist\`
    if you built it yourself) to the computer, for
-   example to `C:\Apps\MondayGoogleSync`. The `.exe` needs the files beside it.
-2. Put `client_secrets.json` in `%LOCALAPPDATA%\MondayGoogleSync\`
+   example to `C:\Apps\TwinCallTracker`. The `.exe` needs the files beside it.
+2. Put `client_secrets.json` in `%LOCALAPPDATA%\TwinCallTracker\`
    (see [Google setup](#google-setup)). Create the folder if it does not exist.
-3. Make a Start Menu or desktop shortcut to `MondayGoogleSync.exe`.
+3. Make a Start Menu or desktop shortcut to `TwinCallTracker.exe`.
 4. Launch it and connect the two accounts.
 
 No Python, Command Prompt or PowerShell is needed to run it.
@@ -127,7 +127,7 @@ needs about ten minutes.
      says so plainly rather than failing oddly.
 3. **APIs & Services → OAuth consent screen**
    - User type: **Internal** if you use Google Workspace, otherwise **External**.
-   - App name: `Monday + Google Sheets Sync`, and fill in the support email.
+   - App name: `Twin Call Tracker`, and fill in the support email.
    - Scopes: add these two, which are the only ones the app ever asks for:
      - `https://www.googleapis.com/auth/spreadsheets`
      - `https://www.googleapis.com/auth/drive.metadata.readonly`
@@ -135,10 +135,10 @@ needs about ten minutes.
      publish the app.
 4. **APIs & Services → Credentials → Create Credentials → OAuth client ID**
    - Application type: **Desktop app**
-   - Name: `MondayGoogleSync desktop`
+   - Name: `TwinCallTracker desktop`
    - **Create**, then **Download JSON**.
 5. Rename the downloaded file to `client_secrets.json` and place it in
-   `%LOCALAPPDATA%\MondayGoogleSync\` on each machine that will run the app.
+   `%LOCALAPPDATA%\TwinCallTracker\` on each machine that will run the app.
    A read-only network share works too — point `GOOGLE_CLIENT_SECRETS_FILE` at it
    in a `.env` file beside the `.exe`.
 
@@ -246,7 +246,7 @@ Open **Settings**:
 
 ## Daily use
 
-1. Open `MondayGoogleSync.exe`.
+1. Open `TwinCallTracker.exe`.
 2. Check both connections read **Connected**.
 3. Press **REFRESH / CHECK FOR UPDATES**.
 4. Read the summary.
@@ -296,7 +296,7 @@ the rest are simply picked up next time.
 
 ## Where your files are
 
-Everything writable lives under `%LOCALAPPDATA%\MondayGoogleSync\`:
+Everything writable lives under `%LOCALAPPDATA%\TwinCallTracker\`:
 
 | File | Contents |
 |---|---|
@@ -338,7 +338,7 @@ The About screen lists these paths and can open the folder.
 On a Windows machine with Python 3.10 or newer on PATH:
 
 ```bat
-cd monday_google_sync
+cd twin_call_tracker
 build.bat
 ```
 
@@ -346,10 +346,10 @@ That creates the virtual environment, installs dependencies, runs the tests and
 produces:
 
 ```
-dist\MondayGoogleSync\MondayGoogleSync.exe
+dist\TwinCallTracker\TwinCallTracker.exe
 ```
 
-Hand over the **whole `dist\MondayGoogleSync` folder** — the executable needs the
+Hand over the **whole `dist\TwinCallTracker` folder** — the executable needs the
 files beside it.
 
 Other options:
@@ -370,7 +370,7 @@ window appears when the application opens, in either shape.
 - Qt modules the app does not use (WebEngine, Quick, Multimedia, 3D, Charts) are
   excluded, which keeps the build to a sensible size.
 - To sign the executable, run `signtool` against
-  `dist\MondayGoogleSync\MondayGoogleSync.exe` after the build. An unsigned
+  `dist\TwinCallTracker\TwinCallTracker.exe` after the build. An unsigned
   executable will show a SmartScreen warning the first few times it is run on a
   new machine.
 
@@ -379,7 +379,7 @@ window appears when the application opens, in either shape.
 ## Running from source
 
 ```bash
-cd monday_google_sync
+cd twin_call_tracker
 python -m venv .venv
 .venv\Scripts\activate          # Windows
 # source .venv/bin/activate     # macOS / Linux
@@ -455,7 +455,7 @@ Manual checks worth doing before rollout, since they need real accounts:
 ## Project layout
 
 ```
-monday_google_sync/
+twin_call_tracker/
 ├── main.py                     entry point, single-instance guard, startup order
 ├── ui/
 │   ├── main_window.py          dashboard, connections, refresh, results, navigation
@@ -488,7 +488,7 @@ monday_google_sync/
 ├── resources/app.ico
 ├── requirements.txt
 ├── .env.example
-├── MondayGoogleSync.spec
+├── TwinCallTracker.spec
 ├── build.bat
 └── README.md
 ```

@@ -95,7 +95,7 @@ class MainWindow(QMainWindow):
 
         block = QVBoxLayout()
         block.setSpacing(1)
-        title = QLabel("MONDAY + GOOGLE SHEETS SYNC")
+        title = QLabel("TWIN CALL TRACKER")
         title.setObjectName("HeaderTitle")
         sub = QLabel("Reads Monday.com, updates your Google Sheet")
         sub.setObjectName("HeaderSub")

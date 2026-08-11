@@ -64,7 +64,7 @@ class ConnStatus:
 # --------------------------------------------------------------------------- #
 
 class _CallbackHandler(BaseHTTPRequestHandler):
-    server_version = "MondayGoogleSync/1.0"
+    server_version = "TwinCallTracker/1.2"
     result: dict[str, str] = {}
 
     def do_GET(self) -> None:                                     # noqa: N802
@@ -89,7 +89,7 @@ _CALLBACK_PAGE_OK = """<!doctype html><meta charset="utf-8"><title>Connected</ti
 background:#f4f6f9;color:#101a24}div{text-align:center;max-width:26em}
 h1{font-size:20px;margin:0 0 8px}p{color:#4a5867}</style>
 <div><h1>Connected</h1><p>You can close this tab and return to
-Monday&nbsp;+&nbsp;Google&nbsp;Sheets&nbsp;Sync.</p></div>"""
+Twin&nbsp;Call&nbsp;Tracker.</p></div>"""
 
 _CALLBACK_PAGE_FAIL = """<!doctype html><meta charset="utf-8"><title>Not connected</title>
 <style>body{font:16px system-ui;margin:0;display:grid;place-items:center;height:100vh;
