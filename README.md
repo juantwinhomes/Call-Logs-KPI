@@ -48,22 +48,34 @@ visible.** Each workbook holds **11 to 13 tabs**:
 
 | Source of the count | Calls | What it is |
 |---|---|---|
-| **Daily tabs (used)** | **5,132** | primary per-call record |
+| **Daily tabs (used)** | **5,162** | primary per-call record |
 | `Week` tab | 5,095 | a copy; runs short in 5 of the 32 workbooks |
 | `Daily Calls Overview` | 4,878 | hand-entered summary blocks |
 
-The summary blocks run 254 below the daily tabs, and **196 of that gap is one week** —
+The summary blocks run 284 below the daily tabs, and **196 of that gap is one week** —
 27 July to 2 August — whose summary was never filled in while its daily tabs hold 196 calls.
+
+**What counts as a call.** A row is a call when its `Date` cell holds a real date serial
+and at least one of `Contact no.` / `Call Type` / `Call Disposition` is filled in. That
+excludes 17 rows carrying only a date, which are layout residue. A row's date comes from
+its own `Date` cell, never from the tab it sits on — one row inside tab `01.12` is dated
+13 January and is counted there. The header row is located by `Start Time` in column 2,
+which is the one header cell intact in all 224 daily tabs; columns 1–10 are positional and
+an audit of every tab found no tab where the data columns are shifted.
 
 | Measure | 2026 |
 |---|---|
-| Call records | **5,132** |
-| Inbound / Outbound / Missed | 1,566 / 3,560 / 3 |
-| First Time / Repeat / Follow Up Responder | 1,007 / 917 / 3,165 |
+| Call records | **5,162** |
+| Inbound / Outbound / Missed / blank | 1,574 / 3,582 / 3 / 3 |
+| First Time / Repeat / Follow Up Responder | 1,012 / 920 / 3,187 |
 | `Appointment Booked (H)` | 121 |
-| Unique phone numbers | 2,045 |
+| Unique phone numbers | 2,042 |
 | Distinct Lead Type values | 7 |
 | Distinct Disposition values | 95 |
+
+Every figure in that table was re-derived from the 32 `.xlsx` files on 11 August and
+checked against what the app renders; the appointment dispositions were checked
+individually (121 / 32 / 20 / 16 / 4 / 8).
 
 Columns as the daily tabs label them: Date · Start Time · Contact Name · Contact no. ·
 Lead Source · Campaign · Call Type · Caller Category · Lead Type · Call Disposition ·
@@ -147,14 +159,17 @@ today — not how many leads ever reached it. Acquired, Cancelled Contract and D
 where leads stop, so those three hold. The cards are worded accordingly: *Still At
 Appointment Stage From Checks*, *Still Under Contract From Postcard*.
 
-**The board's Appointment count will not match the call logs' `Appointment Booked (H)`
-disposition, and is not supposed to.** For July 2026 direct mail the sheets hold 5 calls
-with that disposition while the board holds 1 property at Appointment stage. Three
-reasons: the sheets count **calls** and the board counts **properties**; Lead Stage shows
-only where a lead stands now, so anything that moved on no longer reads Appointment; and
-the two are different populations — 452 board properties against 1,937 direct-mail calls
-for 2026, neither a subset of the other. The app states this inline wherever the two
-sit on the same screen, with both live figures in the text.
+**Appointments on the dashboard come from the call logs, not from this board.** The card
+reads **Appointment Booked From Postcard / Checks / Letters** and counts calls whose
+`Call Disposition` is `Appointment Booked (H)` — 15 for postcard, 12 for checks, 0 for
+letters across 2026. The board's own `Appointment` Lead Stage reads 2 / 6 / 0 for the same
+formats, and that figure lives on the Outcomes page where it is labelled as board state.
+
+The two will not match, and are not supposed to: the sheets count **calls** while the
+board counts **properties**; Lead Stage shows only where a lead stands now, so anything
+that has moved on no longer reads Appointment; and the two are different populations —
+452 board properties against 1,942 direct-mail calls for 2026, neither a subset of the
+other. The app says this inline, with both live figures in the text.
 
 ### Not reported, and not estimated
 
@@ -184,8 +199,8 @@ stand at each stage right now — is what the pipeline cards show.
 
 Three columns exist but cannot carry a KPI:
 
-- **`Offer`** — 36 of 5,132 rows (0.7%), free text rather than numbers
-- **`Lead Status`** — blank in 5,131 of 5,132 rows; the one populated cell holds a person's name
+- **`Offer`** — 41 of 5,162 rows (0.8%), free text rather than numbers
+- **`Lead Status`** — blank in 5,161 of 5,162 rows; the one populated cell holds a person's name
 - **`Check no`** — 4 rows, carrying values like `Layout0, Layout4` rather than check numbers
 
 `Qualified` has no column. The daily tabs record **Lead Type** (Existing Interested Lead,
@@ -343,7 +358,31 @@ They are listed on the Data Sync page.
 5. **25 of 32 weekly sheets label their totals `Week 3 TOTAL`** regardless of week.
 6. **One agent's Total formula is missing**, showing blank where others show a value.
 7. **An August 12 block carries an August 10 date** in the appointments table.
-8. **Postcards mailed are not attributed.** 58,107 pieces went out through Red Stone
+8. **30 calls carry a `Start Time` that is text rather than a time** — values like
+   `:27 PM`, `, 3:38 PM`, `7, 4:10 PM`, across 19 days. They are real calls with a real
+   date, contact number and disposition, so they are counted; only their time of day is
+   unusable. An earlier build of this app dropped them, which is why its total read 5,132
+   instead of 5,162.
+9. **17 rows hold a date and nothing else** — no contact number, call type or
+   disposition. Layout residue, not calls, and excluded.
+10. **5 daily tabs have a corrupted header cell.** `6.2` reads `0.0`, `6.3` reads `9.0`
+    and `6.4` reads `8.0` where `Date` belongs; `7.1` has a blank `Date` header and its
+    `Campaign` header overwritten with the data value `PPC LEAD THB`. The data columns
+    underneath are intact.
+11. **Tab `6.21` has no header row and no calls** — the whole tab is blank, so 21 June
+    2026 has no per-call record.
+12. **Tab `6.15` misspells a header** — `Call Dsiposition`.
+13. **`Agent Name` and `Offer` move between tabs.** `Agent Name` is column 16 in 222 tabs
+    and column 15 in one; `Offer` is column 19 in 210 tabs and column 18 in 13. Both are
+    located by header name, never by position.
+14. **The `Lead Status` column only exists in 128 of the 224 daily tabs**, and across all
+    5,162 call rows it holds exactly one value — `Tyagi, Rajnish`, a person's name.
+15. **`Check no` holds layout names** — 4 rows, carrying `Layout0`, `Layout1`,
+    `Layout0, Layout6`, `Layout0, Layout4, Layout3`.
+16. **`Address` is populated on 553 of 5,162 rows.**
+17. **21 daily tabs hold no calls**, including every day after 10 August, which is as far
+    as the logs go.
+18. **Postcards mailed are not attributed.** 58,107 pieces went out through Red Stone
    while the call logs attribute 474 calls to Postcard by campaign — much of the
    response is landing in the unclassified bucket. This materially distorts postcard
    response rate and needs a decision before Phase 4.
