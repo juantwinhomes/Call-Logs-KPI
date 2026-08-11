@@ -77,6 +77,18 @@ Every figure in that table was re-derived from the 32 `.xlsx` files on 11 August
 checked against what the app renders; the appointment dispositions were checked
 individually (121 / 32 / 20 / 16 / 4 / 8).
 
+**The Call Log page carries lead names and phone numbers.** Contact Name and
+Contact no. are embedded as the sheets write them so the page can be searched and
+filtered offline. That makes this file personal data — the published artifact is private
+by default, and it is worth keeping it that way.
+
+The page filters on search (contact name, phone number, campaign, disposition, agent),
+direction, caller type, lead type, disposition and agent. Filters combine, each dropdown
+shows the count behind every option and offers `(blank)` where the sheet left the field
+empty, a phone search is matched digit for digit so `5103855660` finds `(510) 385-5660`,
+and Export CSV writes exactly the filtered set with every field quoted so names
+containing a comma survive.
+
 Columns as the daily tabs label them: Date · Start Time · Contact Name · Contact no. ·
 Lead Source · Campaign · Call Type · Caller Category · Lead Type · Call Disposition ·
 Lead Status · System Call Duration · Talk Time · Wait Time · Agent Name · Address ·
@@ -313,7 +325,7 @@ changes — every KPI, the source table and the ROI maths read from that one reg
 |---|---|
 | Dashboard | Call KPIs for the selected source, mail performance and pipeline cards under Direct Mail, six trend charts, source table |
 | Source Performance | Funnel per source; toggle master vs Standard CRM Source, sort, search, CSV export |
-| Call Log | Call-log reporting by month, agent, direction and caller type |
+| Call Log | Every call with contact name and phone number, filterable by search, direction, caller type, lead type, disposition and agent, with CSV export of the filtered set |
 | Outcomes | Appointment dispositions, direct-mail deal outcomes from the monday.com board, Lead Type and disposition breakdowns, and the withheld list with reasons |
 | Classification | Review queue, rule table, manual overrides, classifier self-test |
 | Data Sync | Every source read, which tab each number came from, and every problem found |
@@ -380,9 +392,15 @@ They are listed on the Data Sync page.
 15. **`Check no` holds layout names** — 4 rows, carrying `Layout0`, `Layout1`,
     `Layout0, Layout6`, `Layout0, Layout4, Layout3`.
 16. **`Address` is populated on 553 of 5,162 rows.**
-17. **21 daily tabs hold no calls**, including every day after 10 August, which is as far
+17. **504 rows have the contact name `View`** — a link label that leaked out of the CRM
+    export rather than a person's name.
+18. **11 different spellings mean "no caller name"** — `No Caller Name`, `No caller name`,
+    `, No Caller Name`, `, No caller Name`, `Caller name not provided`, `, No Info`,
+    `, No info provided` and more, so they do not group.
+19. **One call has no phone number at all**; every other row carries one.
+20. **21 daily tabs hold no calls**, including every day after 10 August, which is as far
     as the logs go.
-18. **Postcards mailed are not attributed.** 58,107 pieces went out through Red Stone
+21. **Postcards mailed are not attributed.** 58,107 pieces went out through Red Stone
    while the call logs attribute 474 calls to Postcard by campaign — much of the
    response is landing in the unclassified bucket. This materially distorts postcard
    response rate and needs a decision before Phase 4.
