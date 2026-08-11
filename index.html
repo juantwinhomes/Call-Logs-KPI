@@ -529,17 +529,22 @@ const CAMPAIGN_POOL = [
           "Direct Mail Batch - Alameda","Q3 Batch 4",""]}
 ];
 
-/* Funnel behaviour by master source. Referrals convert best, outbound worst. */
+/* Funnel behaviour by master source. Referrals convert best, outbound worst.
+   Calibrated against Twin Home Buyer's real shape: a qualified rate near 9% of
+   leads and roughly 4 acquisitions a month, so the prototype shows the
+   acquisition, CPA, revenue and ROI cards populated rather than empty.
+   Downstream rates are high because "qualified" here already means a live
+   seller opportunity, not merely a contactable lead. */
 const MASTER_PROFILE = {
-  "Direct Mail":       {qual:.15, appt:.52, offer:.46, ctr:.40, acq:.54, calls:2.9},
-  "PPC":               {qual:.20, appt:.55, offer:.50, ctr:.42, acq:.55, calls:2.2},
-  "Organic Search":    {qual:.27, appt:.60, offer:.52, ctr:.46, acq:.58, calls:1.7},
-  "PPL":               {qual:.12, appt:.45, offer:.40, ctr:.34, acq:.46, calls:3.1},
-  "Referral":          {qual:.38, appt:.70, offer:.60, ctr:.55, acq:.65, calls:1.4},
-  "TV":                {qual:.14, appt:.48, offer:.42, ctr:.38, acq:.50, calls:3.4},
-  "Outbound Outreach": {qual:.08, appt:.40, offer:.35, ctr:.30, acq:.42, calls:6.5},
-  "MLS / Redfin":      {qual:.22, appt:.58, offer:.50, ctr:.44, acq:.52, calls:1.2},
-  "_review":           {qual:.10, appt:.45, offer:.40, ctr:.35, acq:.45, calls:2.0}
+  "Direct Mail":       {qual:.09, appt:.78, offer:.82, ctr:.72, acq:.85, calls:2.9},
+  "PPC":               {qual:.11, appt:.78, offer:.82, ctr:.72, acq:.85, calls:2.2},
+  "Organic Search":    {qual:.14, appt:.80, offer:.84, ctr:.74, acq:.86, calls:1.7},
+  "PPL":               {qual:.07, appt:.74, offer:.78, ctr:.68, acq:.82, calls:3.1},
+  "Referral":          {qual:.20, appt:.84, offer:.86, ctr:.78, acq:.88, calls:1.4},
+  "TV":                {qual:.08, appt:.76, offer:.80, ctr:.70, acq:.84, calls:3.4},
+  "Outbound Outreach": {qual:.04, appt:.70, offer:.75, ctr:.64, acq:.80, calls:6.5},
+  "MLS / Redfin":      {qual:.12, appt:.80, offer:.82, ctr:.72, acq:.85, calls:1.2},
+  "_review":           {qual:.06, appt:.74, offer:.78, ctr:.68, acq:.82, calls:2.0}
 };
 
 /* The Google Sheet's own Lead Source column — deliberately unreliable, to
@@ -852,14 +857,17 @@ function aggregate(range, master, leaf){
     uniqueCallers: Math.round(uniqueCallers),
     leads, qualified, appointments, offers, contracts, acquisitions, gross, net,
     review, manual, sheetDisagrees,
-    cpl:  costKnown ? safeDiv(spend, leads)        : null,
-    cpql: costKnown ? safeDiv(spend, qualified)    : null,
-    cpa:  costKnown ? safeDiv(spend, acquisitions) : null,
-    cpc:  costKnown ? safeDiv(spend, calls)        : null,
-    roi:  costKnown && spend > 0 ? (net - spend)/spend*100 : null,
+    /* A costed source with zero spend in the period (no job fell inside it) has
+       no meaningful cost ratio. $0.00 per lead would read as "leads were free",
+       so the ratios stay null while the spend itself still reports as $0. */
+    cpl:  costKnown && spend > 0 ? safeDiv(spend, leads)        : null,
+    cpql: costKnown && spend > 0 ? safeDiv(spend, qualified)    : null,
+    cpa:  costKnown && spend > 0 ? safeDiv(spend, acquisitions) : null,
+    cpc:  costKnown && spend > 0 ? safeDiv(spend, calls)        : null,
+    roi:  costKnown && spend > 0 ? (net - spend)/spend*100      : null,
     responseRate: mailed > 0 ? calls/mailed*100 : null,
     perCaller:    safeDiv(mailed, uniqueCallers),
-    costPerPiece: costKnown ? safeDiv(spend, mailed) : null,
+    costPerPiece: costKnown && spend > 0 ? safeDiv(spend, mailed) : null,
     jobs:c.jobs, estimatedJobs:c.estimated
   };
 }
