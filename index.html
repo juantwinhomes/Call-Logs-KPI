@@ -361,6 +361,21 @@ const leafCosted = (leaf) => !!(COSTING[leaf] && COSTING[leaf].supplied);
 const costedLeaves   = () => ALL_LEAVES.filter(leafCosted);
 const uncostedLeaves = () => ALL_LEAVES.filter(l => !leafCosted(l));
 
+/* -------------------------------------------------------------------------
+   REVENUE — NOT SUPPLIED
+   -------------------------------------------------------------------------
+   No revenue figure exists in any source read so far: the call logs carry
+   calls, leads, dispositions and appointments but no money, the Red Stone
+   board carries quantity and cost only.
+
+   Revenue is therefore not generated and not estimated. Gross Revenue, Net
+   Revenue and ROI report "awaiting revenue data" until real figures are
+   supplied. Flip this flag to true once they are, and populate
+   gross_revenue / net_revenue on the records — nothing else changes.
+   ------------------------------------------------------------------------- */
+const REVENUE_SUPPLIED = false;
+const REVENUE_KPI_KEYS = new Set(["gross","net","roi"]);
+
 /* =========================================================================
    3. CLASSIFIER — campaign first, sheet Lead Source never trusted.
       Priority: campaign name, then platform indicators, then contact method,
@@ -612,8 +627,9 @@ function buildDataset(){
         const day = 1 + Math.floor(rnd() * (mo.y===2026 && mo.m===7 ? 11 : 28));
         const [city, zip] = pick(CITIES);
         const first = pick(FIRST), last = pick(LAST);
-        const net   = acquisition ? Math.round((56000 + rnd()*39000)/100)*100 : 0;
-        const gross = acquisition ? Math.round((net*(2.0 + rnd()*1.1))/100)*100 : 0;
+        /* No revenue is generated. These stay null until real figures arrive —
+           null means "not supplied", which is not the same as zero. */
+        const net = null, gross = null;
 
         let status, disposition;
         if (acquisition)      { status="Acquired";       disposition="Qualified | Acquired"; }
@@ -843,7 +859,7 @@ function aggregate(range, master, leaf){
     if (l.offer)       offers++;
     if (l.contract)    contracts++;
     if (l.acquisition) acquisitions++;
-    gross += l.gross_revenue; net += l.net_revenue;
+    if (REVENUE_SUPPLIED){ gross += l.gross_revenue || 0; net += l.net_revenue || 0; }
     const sm = norm(l.sheet_lead_source).split(" ")[0];
     if (!sm || !r.master || norm(r.master).split(" ")[0] !== sm) sheetDisagrees++;
   });
@@ -853,9 +869,12 @@ function aggregate(range, master, leaf){
 
   return {
     costKnown, spend: costKnown ? Math.round(spend) : null,
+    revenueKnown: REVENUE_SUPPLIED,
     mailed: Math.round(mailed), calls: Math.round(calls),
     uniqueCallers: Math.round(uniqueCallers),
-    leads, qualified, appointments, offers, contracts, acquisitions, gross, net,
+    leads, qualified, appointments, offers, contracts, acquisitions,
+    gross: REVENUE_SUPPLIED ? gross : null,
+    net:   REVENUE_SUPPLIED ? net   : null,
     review, manual, sheetDisagrees,
     /* A costed source with zero spend in the period (no job fell inside it) has
        no meaningful cost ratio. $0.00 per lead would read as "leads were free",
@@ -864,7 +883,8 @@ function aggregate(range, master, leaf){
     cpql: costKnown && spend > 0 ? safeDiv(spend, qualified)    : null,
     cpa:  costKnown && spend > 0 ? safeDiv(spend, acquisitions) : null,
     cpc:  costKnown && spend > 0 ? safeDiv(spend, calls)        : null,
-    roi:  costKnown && spend > 0 ? (net - spend)/spend*100      : null,
+    /* ROI needs both sides. Real cost divided by absent revenue is not an ROI. */
+    roi:  REVENUE_SUPPLIED && costKnown && spend > 0 ? (net - spend)/spend*100 : null,
     responseRate: mailed > 0 ? calls/mailed*100 : null,
     perCaller:    safeDiv(mailed, uniqueCallers),
     costPerPiece: costKnown && spend > 0 ? safeDiv(spend, mailed) : null,
@@ -947,7 +967,14 @@ function notice(kind, html, raw){
 function deltaChip(cur, prev, dir){
   if (cur === null || prev === null) return '<span class="chip none">no comparison</span>';
   if (prev === 0 && cur === 0)      return '<span class="chip flat">' + DOT_FLAT + ' no change</span>';
-  if (prev === 0)                   return '<span class="chip none">no prior data</span>';
+  /* A prior period of zero has no percentage baseline — dividing by it would
+     read as infinite growth. The absolute change on the line below carries the
+     magnitude instead, so this must not claim "no prior data" while the same
+     card shows "prev $0". */
+  if (prev === 0){
+    const tone = dir === "down" ? "bad" : dir === "up" ? "good" : "flat";
+    return `<span class="chip ${tone}">${ARROW_UP} new</span>`;
+  }
   const pct = (cur - prev) / Math.abs(prev) * 100;
   const rose = cur > prev, fell = cur < prev;
   let tone = "flat";
@@ -963,6 +990,15 @@ function absDelta(cur, prev, kind){
 }
 function kpiCard(def, A, B){
   const cur = A[def.key], prev = B ? B[def.key] : null;
+  /* Revenue was never supplied, so anything derived from it is withheld. ROI is
+     checked first because it needs both sides and revenue is the missing one. */
+  if (REVENUE_KPI_KEYS.has(def.key) && !A.revenueKnown){
+    return `<article class="kpi">
+      <p class="kpi-title">${esc(def.title)}</p>
+      <p class="kpi-value empty">${DASH}</p>
+      <div class="kpi-foot"><span class="chip flat">${ICON_CLOCK} awaiting revenue data</span>
+        <p class="kpi-prev">no revenue figures supplied yet</p></div></article>`;
+  }
   if (COST_KPI_KEYS.has(def.key) && !A.costKnown){
     return `<article class="kpi">
       <p class="kpi-title">${esc(def.title)}</p>
@@ -1371,12 +1407,18 @@ function pageDashboard(){
   return `${filterBar()}
   ${empty ? notice("warn","No records fall inside " + esc(cur.label) + " for this selection. " +
       "The cards below show an em dash rather than a zero, because no data is not a value of zero.") : ""}
+  ${!REVENUE_SUPPLIED ? notice("warn", `<p><b>Revenue is not supplied, so Gross Revenue, Net Revenue
+     and ROI are withheld.</b> No revenue figure exists in any source read so far — the call logs
+     carry calls, leads and dispositions but no money, and the Red Stone board carries quantity and
+     cost only. Nothing is estimated in their place.</p>
+     <p>Acquisition and contract <i>counts</i> still report, since those are volumes rather than
+     money. Send revenue figures and these three cards fill in.</p>`, true) : ""}
   ${uncosted.length ? notice("info", `<p><b>Costing supplied for ${costedLeaves().length} of ${
      ALL_LEAVES.length} Standard CRM Sources</b> — ${costedLeaves().map(l => esc(l)).join(" and ")},
      both from the Red Stone Upload board.</p>
-     <p>Marketing Spend, Cost Per Lead, Cost Per Qualified Lead, Cost Per Acquisition and ROI report
-     only where costing exists. A total is withheld whenever any source inside the current selection
-     is missing a figure, so a partial number is never shown as a real one.</p>`, true) : ""}
+     <p>Marketing Spend, Cost Per Lead, Cost Per Qualified Lead and Cost Per Acquisition report only
+     where costing exists. A total is withheld whenever any source inside the current selection is
+     missing a figure, so a partial number is never shown as a real one.</p>`, true) : ""}
 
   ${A.review ? notice("warn", `<p><b>${A.review} of ${A.leads} leads in this selection are not yet
      classified</b> — their campaign could not settle a Standard CRM Source. They are counted in the
@@ -1404,8 +1446,10 @@ function pageDashboard(){
     ${chartCard("chSpendRev","Marketing Spend vs Revenue","USD", `<div class="legend">
       ${A.costKnown ? '<span><i style="background:var(--s1)"></i>Marketing Spend</span>'
         : '<span style="color:var(--ink-3)"><i style="background:var(--ink-3);opacity:.4"></i>Marketing Spend — awaiting costing</span>'}
-      <span><i style="background:var(--s2)"></i>Gross Revenue</span>
-      <span><i style="background:var(--s3)"></i>Net Revenue</span></div>`)}
+      ${A.revenueKnown
+        ? '<span><i style="background:var(--s2)"></i>Gross Revenue</span><span><i style="background:var(--s3)"></i>Net Revenue</span>'
+        : '<span style="color:var(--ink-3)"><i style="background:var(--ink-3);opacity:.4"></i>Revenue — awaiting data</span>'}
+      </div>`)}
     ${chartCard("chCPL","Cost Per Lead Trend","USD per lead")}
     ${chartCard("chAcq","Acquisitions By Month","acquired properties")}
     ${chartCard("chROI","ROI Trend","percent")}
@@ -1435,10 +1479,15 @@ function drawDashboardCharts(){
 
   const rev = [];
   if (A.costKnown) rev.push({name:"Marketing Spend",color:"var(--s1)",values:seriesVals(ms,a=>a.spend)});
-  rev.push({name:"Gross Revenue",color:"var(--s2)",values:seriesVals(ms,a=>a.gross)});
-  rev.push({name:"Net Revenue",  color:"var(--s3)",values:seriesVals(ms,a=>a.net)});
-  mountChart("chSpendRev", h => columnChart(h, {labels, kind:"usd0", height:230,
-    aria:"Marketing spend against revenue by month", series:rev}));
+  if (A.revenueKnown){
+    rev.push({name:"Gross Revenue",color:"var(--s2)",values:seriesVals(ms,a=>a.gross)});
+    rev.push({name:"Net Revenue",  color:"var(--s3)",values:seriesVals(ms,a=>a.net)});
+  }
+  mountChart("chSpendRev", h => rev.length
+    ? columnChart(h, {labels, kind:"usd0", height:230,
+        aria:"Marketing spend against revenue by month", series:rev,
+        emptyMsg:"Awaiting revenue data"})
+    : emptyChart(h, "Awaiting costing and revenue data", 230));
 
   const msg = "No costing supplied for " + (state.leaf !== ALL_LEAF && state.master !== ALL_MASTERS
     ? state.leaf : state.master);
@@ -1517,6 +1566,8 @@ function sourceTable(){
         <span class="src-cell"><i style="background:${dot}"></i>${esc(r.label)}</span>
         ${!r.isMaster && state.srcView==="leaf" ? "" : ""}</td>`;
     }
+    if (REVENUE_KPI_KEYS.has(c.key) && !r.revenueKnown)
+      return `<td title="awaiting revenue data" style="color:var(--ink-3)">${DASH}</td>`;
     if (COST_KPI_KEYS.has(c.key) && !r.costKnown)
       return `<td title="awaiting costing" style="color:var(--ink-3)">${DASH}</td>`;
     const v = r[c.key];
@@ -1530,6 +1581,8 @@ function sourceTable(){
 
   const totalRow = `<tr class="total">${SRC_COLS.map(c => {
     if (c.key === "label") return `<td class="l">All Sources</td>`;
+    if (REVENUE_KPI_KEYS.has(c.key) && !totals.revenueKnown)
+      return `<td title="awaiting revenue data" style="color:var(--ink-3);font-weight:400">${DASH}</td>`;
     if (COST_KPI_KEYS.has(c.key) && !totals.costKnown)
       return `<td title="no company total until every source has costing" style="color:var(--ink-3);font-weight:400">${DASH}</td>`;
     const v = totals[c.key];
@@ -1654,11 +1707,13 @@ function pageMail(){
     <p>The only channels with verified cost. Postcard and Letter both come from the Red Stone
        Upload board; Check has no costing supplied yet.</p></div>
 
-  ${notice("warn", `<p><b>Cost is real, revenue is sample.</b> Pieces Mailed, Cost Per Piece and
-    Marketing Spend come from the Red Stone board. Leads, calls, acquisitions and revenue are
-    generated sample data.</p>
-    <p>So anything dividing the two — Response Rate, Cost Per Call, Cost Per Acquisition, ROI —
-    is structurally correct but not yet a true number. These become meaningful in Phase 4.</p>`, true)}
+  ${notice("warn", `<p><b>Cost is real. Volumes are sample. Revenue is not supplied at all.</b>
+    Pieces Mailed, Cost Per Piece and Marketing Spend come from the Red Stone board. Leads, calls
+    and acquisition counts are generated sample data.</p>
+    <p>Revenue figures do not exist in any source read so far, so Gross Revenue, Net Revenue and
+    ROI are withheld rather than estimated. Response Rate, Cost Per Call and Cost Per Acquisition
+    divide real cost by sample volumes, so they are structurally correct but not yet true
+    numbers.</p>`, true)}
 
   <div class="sec"><h2>Direct Mail - Postcard</h2><p>All thirteen mail KPIs.</p></div>
   <div class="kpi-grid">${MAIL_KPIS.map(d => kpiCard(d,A,B)).join("")}</div>
@@ -1796,8 +1851,10 @@ function pageDeals(){
       <td class="l">${esc(r.leaf || NEEDS_REVIEW)}${r.manual ? ' <span class="pill mono">manual</span>' : ""}</td>
       <td class="l" style="font-size:12.5px">${esc(d.campaign || "—")}</td>
       <td class="l">${statusPill(d.lead_status)}</td>
-      <td>${d.gross_revenue ? "$"+d.gross_revenue.toLocaleString("en-US") : DASH}</td>
-      <td>${d.net_revenue ? "$"+d.net_revenue.toLocaleString("en-US") : DASH}</td></tr>`;
+      <td style="color:var(--ink-3)" title="awaiting revenue data">${
+        d.gross_revenue ? "$"+d.gross_revenue.toLocaleString("en-US") : DASH}</td>
+      <td style="color:var(--ink-3)" title="awaiting revenue data">${
+        d.net_revenue ? "$"+d.net_revenue.toLocaleString("en-US") : DASH}</td></tr>`;
   }).join("");
 
   return `${filterBar()}
@@ -1823,8 +1880,9 @@ function pageDeals(){
     }).join("")}
   </div>
   <p class="chart-note">Marketing Spend (${fmt(A.spend,"usd0")}) and Revenue
-    (${fmt(A.gross,"usd0")} gross / ${fmt(A.net,"usd0")} net) are money rather than counts,
-    so they are reported above rather than drawn as funnel stages.</p></section>
+    (${A.revenueKnown ? fmt(A.gross,"usd0") + " gross / " + fmt(A.net,"usd0") + " net"
+      : "awaiting data"}) are money rather than counts, so they are reported above rather than
+    drawn as funnel stages.</p></section>
   <div class="sec"><h2>Live and closed deals</h2><p>Reached appointment or beyond. Showing ${deals.length}.</p></div>
   <div class="t-scroll"><table><thead><tr><th class="l">Property</th><th class="l">Seller</th>
     <th class="l">CRM Source</th><th class="l">Campaign</th><th class="l">Stage</th>

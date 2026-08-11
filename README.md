@@ -57,19 +57,29 @@ mixing the two silently would produce KPIs that look authoritative and are not.
   By month mailed: May 3,752 / $2,130.56 · Jun 30,976 / $14,945.56 ·
   Jul 18,796 / $8,922.26 · Aug 4,583 / $2,214.38.
 
+**Not supplied at all — and not estimated**
+
+- **Revenue.** No revenue figure exists in any source read so far: the call logs carry
+  calls, leads, dispositions and appointments but no money, and the Red Stone board
+  carries quantity and cost only. Gross Revenue, Net Revenue and ROI therefore report
+  "awaiting revenue data" rather than a number. Acquisition and contract *counts* still
+  report, because those are volumes rather than money.
+
+  Set `REVENUE_SUPPLIED = true` and populate `gross_revenue` / `net_revenue` on the
+  records once real figures arrive. Nothing else changes.
+
 **Sample data**
 
 - Lead, call, appointment, offer, contract and acquisition volumes
-- All revenue figures
 - Every source's volume profile
 
 Volumes are anchored to Twin Home Buyer's real 2026 shape so the prototype reads as
 familiar — roughly 119 leads and 610 calls a month, ~4 acquisitions a month — but they
 are generated, not measured.
 
-Because of this split, any KPI that divides real cost by sample revenue (ROI, Cost Per
-Acquisition, Response Rate) is structurally correct but not yet a true number. The
-Direct Mail page says so directly, at the top.
+Because of this split, any KPI that divides real cost by sample volumes — Response Rate,
+Cost Per Call, Cost Per Acquisition — is structurally correct but not yet a true number.
+The Direct Mail page says so directly, at the top.
 
 ## Lead Source is derived from the Campaign
 
