@@ -40,14 +40,21 @@ Date, Lead Source, Campaign, Direction, Caller Type, Lead Status, Disposition an
 
 | Measure | 2026 |
 |---|---|
-| Call records | **5,839** |
-| Inbound / Outbound / Missed | 1,711 / 4,088 / 3 |
+| Call records | **5,551** |
+| Inbound / Outbound / Missed | 1,645 / 3,866 / 3 |
 | Direction not recorded | 37 |
-| First Time / Repeat / Follow Up Responder | 1,103 / 1,101 / 3,556 |
-| `Appointment Booked (H)` | 140 |
+| First Time / Repeat / Follow Up Responder | 1,059 / 1,026 / 3,388 |
+| `Appointment Booked (H)` | 128 |
 | Unique phone numbers | 2,038 |
 | Distinct Lead Status values | 10 |
-| Distinct Disposition values | 99 |
+| Distinct Disposition values | 100 |
+
+**Deduplicated.** The flattened read returned some call rows twice — the same call, same
+minute, same agent, same outcome, appearing in a mirrored copy of the log inside the sheet.
+One pair differed only in duration formatting (`00:00:18` against `0:00:18`), which is what
+identified them as one call rather than two. **288 duplicate rows removed on full row
+identity: 5,839 read, 5,551 distinct calls kept.** 21 of the 32 sheets were affected, most
+heavily from April onward — the August sheet alone had 39 of its 103 rows duplicated.
 
 **Mail cost and volume — Red Stone Upload board (Monday.com `18392647066`)**
 
@@ -65,12 +72,12 @@ Only jobs the board marks Done count as mailed.
 Each sheet has both. They do not match, and which is authoritative has not been decided.
 This app counts the detail log; the Data Sync page shows the gap side by side.
 
-| | Summary blocks | Detail log (used) |
+| | Summary blocks | Detail log, deduped (used) |
 |---|---|---|
-| Total calls | 4,878 | **5,839** |
-| Inbound | 1,512 | **1,711** |
-| Outbound | 3,357 | **4,088** |
-| First time callers | 1,027 | **1,103** |
+| Total calls | 4,878 | **5,551** |
+| Inbound | 1,512 | **1,645** |
+| Outbound | 3,357 | **3,866** |
+| First time callers | 1,027 | **1,059** |
 
 ### Not reported, and not estimated
 
@@ -104,8 +111,8 @@ campaign name often cannot settle on its own — those need a recorded contact m
 (read from the campaign wording where present, otherwise the `contact_method` field).
 Without one, the lead lands in the review queue rather than being assigned a guess.
 
-**Nothing is guessed.** Run against the real logs, the classifier places **3,430 of 5,839
-records (58.7%)** and holds **2,409 (41.3%)** for review:
+**Nothing is guessed.** Run against the real logs, the classifier places **3,225 of 5,551
+records (58.1%)** and holds **2,326 (41.9%)** for review:
 
 | Reason | Records |
 |---|---|
