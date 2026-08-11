@@ -1,0 +1,24 @@
+# Virtual environment and build output
+.venv/
+venv/
+build/
+dist/
+*.spec.bak
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Secrets and local state - never commit these
+.env
+client_secrets.json
+credentials.enc
+keyfile.bin
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+logs/*.log
+logs/*.log.*

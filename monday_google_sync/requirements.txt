@@ -1,0 +1,27 @@
+# Monday + Google Sheets Sync - runtime dependencies
+#
+# Install with:   pip install -r requirements.txt
+# Python 3.10 or newer is required (3.11 or 3.12 recommended).
+
+# --- Desktop user interface -------------------------------------------------
+PySide6==6.7.3
+
+# --- HTTP (Monday.com GraphQL) ---------------------------------------------
+requests==2.32.3
+
+# --- Google Sheets ----------------------------------------------------------
+google-api-python-client==2.149.0
+google-auth==2.35.0
+google-auth-oauthlib==1.2.1
+google-auth-httplib2==0.2.0
+
+# --- Local credential encryption -------------------------------------------
+cryptography==43.0.1
+keyring==25.4.1
+
+# --- Windows packaging ------------------------------------------------------
+# Only needed on the machine that builds the .exe, harmless elsewhere.
+pyinstaller==6.10.0
+
+# --- Tests (not required to run the application) ---------------------------
+pytest==8.3.3
