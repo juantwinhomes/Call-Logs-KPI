@@ -69,41 +69,94 @@ Because of this split, any postcard KPI that divides real cost by sample revenue
 (ROI, Cost Per Acquisition) is structurally correct but not yet a true number. The
 Postcard Performance page says so directly.
 
+## Lead Source is derived from the Campaign
+
+The Google Sheet's own Lead Source column is **not trusted**. Classification reads the
+**Campaign** field and resolves it against the supplied Master Source → Standard CRM
+Source map: **8 master sources, 19 Standard CRM Sources.**
+
+Priority order: campaign name → platform indicators → contact method → the sheet's own
+Lead Source as supporting information only.
+
+**Two axes.** Direct Mail, PPL, Referral, Outbound and MLS/Redfin resolve from the
+campaign alone. PPC, Organic Search and TV each split **Call vs Web Form**, which a
+campaign name often cannot settle on its own — those need a recorded contact method
+(read from the campaign wording where present, otherwise the `contact_method` field).
+Without one, the lead lands in the review queue rather than being assigned a guess.
+
+**Nothing is guessed.** A campaign that cannot settle a Standard CRM Source waits on the
+Classification page with the reason stated. Current sample data holds 81 such leads:
+
+| Reason | Leads |
+|---|---|
+| No CRM Source defined for Reddit Ads | 16 |
+| Campaign is empty | 15 |
+| Contact method unknown — Call or Web Form | 14 |
+| No campaign signal | 13 |
+| No CRM Source defined for Facebook / Meta Ads | 12 |
+| No CRM Source defined for direct mail with no format named | 11 |
+
+**Unclassified leads still count.** All Master Sources includes the review bucket, so the
+company lead total stays true (835 for 2026, reconciling exactly against the raw record
+count and the sum of every master source). The dashboard states how many are unclassified
+rather than quietly dropping them.
+
+**Manual overrides win.** Assigning a source on the Classification page is an override
+that auto-classification never touches. Only the explicit "Re-run auto-classification"
+button clears them, and it says how many it will discard.
+
+**Classifier self-test** runs at load: all 54 sample campaigns must resolve to their
+expected Standard CRM Source, and the result is shown on the Classification page. The
+rule table is listed there in priority order.
+
+### Two decisions needed from you
+
+1. **Facebook / Meta Ads and Reddit Ads have no Standard CRM Source** in the supplied map,
+   but campaigns for both exist. They are held for review rather than folded into
+   PPC - Google or PPC - Bing. Add leaves, or confirm they should be excluded.
+2. **TV now has sub-sources.** An earlier instruction said TV Commercial must have no
+   Sub-Source dropdown; the final map gives TV two (Call and Web Form). The final map is
+   implemented. MLS / Redfin is now the only master with a single CRM source, so its
+   Standard CRM Source control is suppressed instead.
+
 ## Marketing cost is supplied, never modelled
 
 No cost figure is invented anywhere in this app. Cost lives in one registry,
-`SOURCE_COSTING`, keyed by source and month:
+`COSTING`, keyed by source and month:
 
 ```js
-SOURCE_COSTING["Postcard"] = { supplied: true, byMonth: { "2026-07": {cost, pieces} } }
+COSTING["Direct Mail - Postcard"] = { supplied: true, byMonth: { "2026-07": {cost, pieces} } }
 ```
 
-Currently **1 of 10 sources has costing** (Postcard, from Red Stone). The other nine
-are awaiting figures and behave accordingly:
+Currently **2 of 19 Standard CRM Sources have costing** — `Direct Mail - Postcard` and
+`Direct Mail - Letter`, both from the Red Stone board. The other 17 are awaiting figures
+and behave accordingly:
 
 - Marketing Spend, Cost Per Lead, Cost Per Qualified Lead, Cost Per Acquisition and
   ROI render an em dash with an "awaiting costing" chip — **never a zero**, because
   zero is a claim about spend and an empty registry entry is not
-- **All Sources shows no spend total at all.** A company figure built from one
-  channel's costing would understate the real number, so it is withheld rather than
-  computed
+- **A total is withheld whenever any source inside the selection lacks a figure.** That
+  applies at every level: All Master Sources shows no spend, and even Direct Mail shows
+  none, because `Direct Mail - Check` has no costing yet. Postcard and Letter each report
+  in full. A partial total would understate real spend
 - Cost columns in the source table stay blank for those sources, so it is obvious at
   a glance which channels have verified cost
 
-To add a source's costing, set `supplied: true` and fill `byMonth`. Nothing else
-changes — every KPI, the source table and the ROI maths read from that registry.
+To add costing, fill the registry entry for that Standard CRM Source. Nothing else
+changes — every KPI, the source table and the ROI maths read from that one registry.
 
 ## Pages
 
 | Page | Purpose |
 |---|---|
 | Dashboard | Executive KPIs, postcard KPIs, eight trend charts, source table |
-| Source Performance | Full funnel per source; sort, search, paginate, CSV export |
-| Postcard Performance | All 13 postcard KPIs plus the Red Stone job log |
+| Source Performance | Funnel per source; toggle master vs Standard CRM Source, sort, search, CSV export |
+| Direct Mail | Postcard and Letter KPIs plus the Red Stone job log |
 | Calls | Call-log reporting by month, agent, direction and caller type |
 | Deals | Lead-to-acquisition funnel and the deal register |
+| Classification | Review queue, rule table, manual overrides, classifier self-test |
 | Data Sync | Google Drive and Monday.com sync shell — disabled until Phase 2 |
-| Admin Settings | Connections, source costing, field mapping, source aliases |
+| Admin Settings | Connections, source costing, taxonomy, field mapping |
 
 ## Design and correctness notes
 
