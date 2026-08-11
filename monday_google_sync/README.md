@@ -16,19 +16,20 @@ Settings.
 ## Contents
 
 1. [What it does](#what-it-does)
-2. [Install for daily use](#install-for-daily-use)
-3. [Google setup](#google-setup) — needed once per organisation
-4. [Monday.com setup](#mondaycom-setup)
-5. [First-time configuration](#first-time-configuration)
-6. [Daily use](#daily-use)
-7. [How duplicates are prevented](#how-duplicates-are-prevented)
-8. [Where your files are](#where-your-files-are)
-9. [Security](#security)
-10. [Building the .exe](#building-the-exe)
-11. [Running from source](#running-from-source)
-12. [Testing](#testing)
-13. [Project layout](#project-layout)
-14. [Troubleshooting](#troubleshooting)
+2. [Download the built application](#download-the-built-application)
+3. [Install for daily use](#install-for-daily-use)
+4. [Google setup](#google-setup) — needed once per organisation
+5. [Monday.com setup](#mondaycom-setup)
+6. [First-time configuration](#first-time-configuration)
+7. [Daily use](#daily-use)
+8. [How duplicates are prevented](#how-duplicates-are-prevented)
+9. [Where your files are](#where-your-files-are)
+10. [Security](#security)
+11. [Building the .exe](#building-the-exe)
+12. [Running from source](#running-from-source)
+13. [Testing](#testing)
+14. [Project layout](#project-layout)
+15. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -65,9 +66,42 @@ an error.
 
 ---
 
+## Download the built application
+
+You do not need Python, or this source code, to run the app. Every build is
+produced on a Windows machine by GitHub Actions and attached to the run:
+
+1. Open <https://github.com/juantwinhomes/Call-Logs-KPI/actions/workflows/build-windows-exe.yml>
+2. Click the most recent green run.
+3. Scroll to **Artifacts** at the bottom and download one of:
+
+   | Artifact | What it is |
+   |---|---|
+   | `MondayGoogleSync-windows-folder` | a zip — unzip anywhere and run `MondayGoogleSync.exe` inside. **Recommended**: starts faster, and a missing file is visible rather than mysterious. |
+   | `MondayGoogleSync-windows-single-exe` | one single `.exe`. Simplest to hand around; slower to start because it unpacks itself each launch. |
+
+You must be signed in to GitHub to download an artifact — that is a GitHub rule,
+not a choice this project made. If a run was started by hand with
+**Run workflow**, the same two downloads are also published under
+[Releases](https://github.com/juantwinhomes/Call-Logs-KPI/releases), which needs
+no sign-in.
+
+Windows SmartScreen will warn the first time, because the executable is not
+code-signed: click **More info → Run anyway**. To remove the warning for good,
+sign the `.exe` with your organisation's certificate (see
+[Building the .exe](#building-the-exe)).
+
+Nothing is published unless it passes: the workflow runs the full test suite,
+launches the built `.exe` to confirm it starts and creates its database, and
+checks its log for anything credential-shaped. Any of those failing fails the
+build.
+
+---
+
 ## Install for daily use
 
-1. Copy the whole `MondayGoogleSync` folder from `dist\` to the computer, for
+1. Copy the whole `MondayGoogleSync` folder from the download (or from `dist\`
+   if you built it yourself) to the computer, for
    example to `C:\Apps\MondayGoogleSync`. The `.exe` needs the files beside it.
 2. Put `client_secrets.json` in `%LOCALAPPDATA%\MondayGoogleSync\`
    (see [Google setup](#google-setup)). Create the folder if it does not exist.
