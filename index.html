@@ -341,6 +341,50 @@ const costedLeaves   = () => ALL_LEAVES.filter(leafCosted);
 const uncostedLeaves = () => ALL_LEAVES.filter(l => !leafCosted(l));
 
 /* =========================================================================
+   2b. DIRECT MAIL PIPELINE — monday.com board "📬 Direct Mail & Postcard
+       Leads", board 18421423765, in the Equity Track Iriga – Operating System
+       workspace. Read 11 August 2026. One item per property, 452 of them,
+       transcribed exactly: Lead Stage, Source, Campaign / List, Date Received
+       and Revenue as the board holds them. No stage is inferred and no figure
+       is derived.
+   ========================================================================= */
+
+const DM_BOARD = {"board":"18421423765","boardName":"📬 Direct Mail & Postcard Leads","workspace":"Equity Track Iriga – Operating System","read":"2026-08-11","boardUpdated":"2026-08-11T21:05:26Z","src":["Direct Mail (Postcard)","Direct Mail (Checks)","Direct Mail (Letters)","Direct Mail (Call-in)"],"stage":["New","Contacted","Interested","Appointment","Under Contract","Acquired","Cancelled Contract","Dead"],"group":["🚨 New Leads","📞 Working / Contacted","🤝 Appointment & Offer","📝 Under Contract","✅ Closed / Won","🚫 Cancelled Contract","❌ Dead / Not Interested"],"camp":["","70% Distress","Bankruptcy","Death of Joint Tenant","EQT Liens- Check","EQT NTS- Check","Foreclosure","Free Inspection Report EQT (Letter)","High Equity","Liens","NOD / Foreclosure","NTS","Old Directmail","PPC Lead THB Mailed (Checks)","Postcard","Postcard 70% Distress","Postcard Follow Up Letter","Postcard High Equity","Postcard Liens","Postcard NTS","Postcard Tax Delinquent","Postcard Ugly Houses","Sorted Ugly Houses EQT (Checks)","Tax Delinquent","Tax Delinquent EQT (Checks)","Ugly House"],"r":[["2026-03-10",0,5,4,14,35918.75],["2026-02-09",1,5,4,22,null],[null,1,5,4,0,null],["2026-01-28",1,6,3,14,null],["2026-03-25",1,3,2,9,null],["2026-03-23",1,3,2,9,null],["2026-03-02",1,3,2,4,null],["2026-01-16",1,3,2,9,null],["2026-06-12",1,3,2,9,null],["2026-06-22",0,3,2,18,null],["2026-03-07",0,3,2,14,null],["2026-07-22",1,3,2,13,null],["2026-07-05",1,1,1,2,null],["2026-07-04",1,1,1,11,null],["2026-06-26",1,1,1,6,null],["2026-06-25",0,1,1,9,null],["2026-06-20",0,1,1,20,null],["2026-06-19",0,1,1,18,null],["2026-06-18",0,2,1,18,null],["2026-06-16",1,1,1,9,null],["2026-06-16",0,2,1,1,null],["2026-06-12",0,2,1,18,null],["2026-06-12",0,2,1,15,null],["2026-06-08",0,2,1,21,null],["2026-06-07",0,1,1,17,null],["2026-06-05",0,2,1,15,null],["2026-06-03",1,1,1,9,null],["2026-05-28",0,2,1,20,null],["2026-06-03",1,1,1,9,null],["2026-05-27",1,1,1,11,null],["2026-04-27",1,2,1,23,null],["2026-04-14",0,2,1,25,null],["2026-03-31",0,2,1,25,null],["2026-03-30",1,1,1,9,null],["2026-03-28",1,1,1,3,null],["2026-03-28",0,1,1,23,null],["2026-03-18",0,2,1,25,null],["2026-03-26",0,1,1,23,null],["2026-03-23",1,1,1,10,null],["2026-03-25",1,1,1,9,null],["2026-03-14",0,1,1,23,null],["2026-03-16",1,1,1,9,null],["2026-03-06",0,1,1,25,null],["2026-02-28",0,1,1,25,null],["2026-02-27",1,1,1,6,null],["2026-03-05",0,1,1,10,null],["2026-02-23",0,1,1,0,null],["2026-02-24",0,1,1,0,null],["2026-02-10",1,1,1,9,null],["2026-02-06",1,1,1,23,null],["2026-01-30",1,1,1,23,null],["2026-01-26",1,1,1,10,null],["2026-01-26",1,1,1,3,null],["2026-01-21",1,1,1,9,null],["2026-01-17",1,1,1,9,null],["2026-01-13",1,1,1,4,null],["2026-01-09",1,2,1,24,null],["2026-01-07",1,1,1,9,null],["2026-01-05",1,1,1,9,null],["2026-06-26",0,1,1,23,null],["2026-07-07",0,1,1,18,null],["2026-06-26",1,1,1,9,null],["2026-07-11",0,1,1,9,null],["2026-07-11",1,1,1,11,null],["2026-07-08",0,1,1,0,null],["2026-06-25",0,1,1,9,null],["2026-02-05",1,1,1,25,null],["2026-05-12",1,1,1,0,null],["2026-03-26",1,1,1,10,null],["2026-03-24",1,1,1,3,null],["2026-03-17",0,1,1,0,null],["2026-02-24",1,1,1,23,null],["2026-02-17",1,1,1,9,null],["2026-02-14",1,1,1,23,null],["2026-02-11",1,1,1,23,null],["2026-02-10",1,1,1,9,null],["2026-02-02",1,1,1,10,null],["2026-01-27",1,1,1,10,null],["2026-01-22",1,1,1,9,null],["2026-01-23",1,1,1,9,null],["2026-06-20",1,1,1,13,null],["2026-07-22",0,1,1,18,null],["2026-07-25",1,1,1,0,null],["2026-07-30",0,1,1,21,null],["2026-07-30",0,1,1,0,null],["2026-07-30",0,1,1,21,null],["2026-07-30",0,1,1,21,null],["2026-07-30",0,1,1,21,null],["2026-07-30",0,1,1,0,null],["2026-07-30",0,1,1,0,null],["2026-07-30",0,1,1,0,null],["2026-07-30",0,1,1,0,null],["2026-07-30",0,1,1,0,null],["2026-07-30",0,1,1,0,null],["2026-07-30",0,1,1,0,null],["2026-07-30",0,1,1,0,null],["2026-07-30",0,1,1,21,null],["2026-07-30",0,1,1,0,null],["2026-07-30",0,1,1,0,null],["2026-07-30",0,1,1,21,null],["2026-07-30",0,1,1,0,null],["2026-07-30",0,1,1,0,null],["2026-07-30",0,1,1,0,null],["2026-07-06",1,0,0,2,null],["2026-06-27",0,0,0,23,null],["2026-06-18",1,0,0,9,null],["2026-06-07",0,0,0,17,null],["2026-06-04",1,0,0,6,null],["2026-05-21",0,0,0,0,null],["2026-05-28",0,0,0,25,null],["2026-06-02",1,0,0,0,null],["2026-04-28",1,0,0,23,null],["2026-04-20",1,0,0,23,null],["2026-05-12",1,0,0,6,null],["2026-04-17",1,0,0,9,null],["2026-04-25",1,0,0,10,null],["2026-04-17",1,0,0,9,null],["2026-05-07",1,0,0,0,null],["2026-04-17",1,0,0,0,null],["2026-04-13",1,0,0,0,null],["2026-04-10",0,0,0,0,null],["2026-04-13",1,0,0,23,null],["2026-04-14",1,0,0,3,null],["2026-04-06",1,0,0,9,null],["2026-04-06",1,0,0,23,null],["2026-04-02",0,0,0,25,null],["2026-04-02",1,0,0,9,null],["2026-04-08",0,0,0,9,null],["2026-04-07",1,0,0,10,null],["2026-04-07",1,0,0,3,null],["2026-04-06",1,0,0,9,null],["2026-04-07",1,0,0,11,null],["2026-04-08",0,0,0,9,null],["2026-03-28",1,0,0,0,null],["2026-03-17",1,0,0,9,null],["2026-03-16",1,0,0,23,null],["2026-03-09",0,0,0,0,null],["2026-03-09",0,0,0,25,null],["2026-03-12",0,0,0,25,null],["2026-03-09",1,0,0,9,null],["2026-03-11",0,0,0,0,null],["2026-03-07",0,0,0,9,null],["2026-03-07",0,0,0,25,null],["2026-03-03",1,0,0,11,null],["2026-03-05",0,0,0,0,null],["2026-02-25",1,0,0,9,null],["2026-02-25",0,0,0,0,null],["2026-02-18",1,0,0,0,null],["2026-02-17",1,0,0,9,null],["2026-02-19",1,0,0,9,null],["2026-02-10",1,0,0,6,null],["2026-02-14",1,0,0,6,null],["2026-02-12",1,0,0,9,null],["2026-02-06",1,0,0,9,null],["2026-02-06",1,0,0,0,null],["2026-02-03",1,0,0,9,null],["2026-02-05",1,0,0,23,null],["2026-02-02",1,0,0,9,null],["2026-02-06",1,0,0,23,null],["2026-02-02",1,0,0,9,null],["2026-01-31",1,0,0,9,null],["2026-01-22",1,0,0,9,null],["2026-01-22",1,0,0,9,null],["2026-01-15",1,0,0,9,null],["2026-01-12",1,0,0,9,null],["2026-01-08",1,0,0,9,null],["2026-01-12",1,0,0,9,null],["2026-01-08",1,0,0,9,null],["2026-03-29",0,0,0,0,null],["2026-03-12",0,0,0,0,null],["2026-03-12",0,0,0,0,null],["2026-03-04",1,0,0,9,null],["2026-07-31",0,0,0,0,null],["2026-03-18",1,6,5,9,null],["2026-07-07",1,7,6,9,null],["2026-07-07",0,7,6,25,null],["2026-07-08",0,7,6,9,null],["2026-07-07",0,7,6,0,null],["2026-07-08",0,7,6,9,null],["2026-07-08",1,7,6,6,null],["2026-07-08",0,7,6,9,null],["2026-07-08",1,7,6,10,null],["2026-07-08",0,7,6,18,null],["2026-07-07",0,7,6,9,null],["2026-07-07",1,7,6,23,null],["2026-07-07",0,7,6,18,null],["2026-07-08",0,7,6,18,null],["2026-07-02",0,7,6,9,null],["2026-07-02",1,7,6,6,null],["2026-07-02",1,7,6,6,null],["2026-06-26",0,7,6,9,null],["2026-06-25",0,7,6,0,null],["2026-07-01",0,7,6,0,null],["2026-06-26",0,7,6,9,null],["2026-06-22",0,7,6,9,null],["2026-06-25",0,7,6,9,null],["2026-07-01",1,7,6,0,null],["2026-06-25",0,7,6,9,null],["2026-06-19",1,7,6,0,null],["2026-06-19",0,7,6,18,null],["2026-06-18",0,7,6,18,null],["2026-06-16",1,7,6,10,null],["2026-06-17",0,7,6,18,null],["2026-06-16",1,7,6,9,null],["2026-06-15",0,7,6,23,null],["2026-06-18",1,7,6,9,null],["2026-06-15",1,7,6,9,null],["2026-06-16",1,7,6,9,null],["2026-06-12",0,7,6,18,null],["2026-06-13",0,7,6,18,null],["2026-06-10",0,7,6,19,null],["2026-06-12",0,7,6,18,null],["2026-06-06",1,7,6,4,null],["2026-06-06",0,7,6,17,null],["2026-06-06",1,7,6,9,null],["2026-06-09",1,7,6,5,null],["2026-06-11",1,7,6,6,null],["2026-06-11",0,7,6,20,null],["2026-06-08",1,7,6,11,null],["2026-06-06",0,7,6,18,null],["2026-06-05",0,7,6,18,null],["2026-06-05",0,7,6,18,null],["2026-06-04",0,7,6,15,null],["2026-06-03",1,7,6,9,null],["2026-06-03",0,7,6,15,null],["2026-05-29",1,7,6,23,null],["2026-05-29",0,7,6,25,null],["2026-06-01",1,7,6,2,null],["2026-05-18",0,7,6,14,null],["2026-05-15",1,7,6,11,null],["2026-05-12",1,7,6,9,null],["2026-05-12",1,7,6,2,null],["2026-04-01",0,7,6,25,null],["2026-04-03",1,7,6,9,null],["2026-03-31",0,7,6,25,null],["2026-03-31",0,7,6,25,null],["2026-03-28",0,7,6,25,null],["2026-03-19",0,7,6,25,null],["2026-03-25",1,7,6,10,null],["2026-03-19",0,7,6,25,null],["2026-03-09",0,7,6,9,null],["2026-03-09",0,7,6,9,null],["2026-03-13",0,7,6,25,null],["2026-03-07",1,7,6,9,null],["2026-03-11",1,7,6,23,null],["2026-03-06",0,7,6,25,null],["2026-02-27",0,7,6,25,null],["2026-02-27",0,7,6,25,null],["2026-02-28",0,7,6,25,null],["2026-03-02",0,7,6,0,null],["2026-02-28",0,7,6,14,null],["2026-02-27",1,7,6,6,null],["2026-02-27",0,7,6,8,null],["2026-02-25",0,7,6,0,null],["2026-02-18",1,7,6,3,null],["2026-02-24",1,7,6,0,null],["2026-02-17",0,7,6,23,null],["2026-02-23",1,7,6,9,null],["2026-02-20",1,7,6,9,null],["2026-02-17",0,7,6,9,null],["2026-02-17",1,7,6,9,null],["2026-02-16",1,7,6,9,null],["2026-02-13",1,7,6,23,null],["2026-02-11",1,7,6,9,null],["2026-02-10",1,7,6,9,null],["2026-02-11",1,7,6,9,null],["2026-02-09",1,7,6,6,null],["2026-02-07",1,7,6,9,null],["2026-02-13",1,7,6,6,null],["2026-02-06",1,7,6,23,null],["2026-02-03",1,7,6,3,null],["2026-02-05",1,7,6,3,null],["2026-02-04",1,7,6,10,null],["2026-02-06",1,7,6,23,null],["2026-02-03",1,7,6,9,null],["2026-02-03",1,7,6,10,null],["2026-02-02",1,7,6,3,null],["2026-02-02",1,7,6,3,null],["2026-02-04",1,7,6,10,null],["2026-01-31",1,7,6,3,null],["2026-02-02",1,7,6,9,null],["2026-01-28",1,7,6,9,null],["2026-01-28",1,7,6,3,null],["2026-01-31",1,7,6,9,null],["2026-01-31",1,7,6,10,null],["2026-01-28",1,7,6,9,null],["2026-01-30",1,7,6,9,null],["2026-01-28",1,7,6,9,null],["2026-01-30",1,7,6,9,null],["2026-01-29",1,7,6,10,null],["2026-01-28",1,7,6,9,null],["2026-01-28",1,7,6,9,null],["2026-01-28",1,7,6,10,null],["2026-01-28",1,7,6,3,null],["2026-01-26",1,7,6,10,null],["2026-01-27",1,7,6,9,null],["2026-01-26",1,7,6,9,null],["2026-01-27",1,7,6,10,null],["2026-01-27",1,7,6,10,null],["2026-01-27",1,7,6,10,null],["2026-01-27",1,7,6,10,null],["2026-01-28",1,7,6,10,null],["2026-01-27",1,7,6,10,null],["2026-01-26",1,7,6,9,null],["2026-01-26",1,7,6,9,null],["2026-01-25",1,7,6,23,null],["2026-01-22",1,7,6,9,null],["2026-01-21",1,7,6,9,null],["2026-01-20",1,7,6,9,null],["2026-01-20",1,7,6,9,null],["2026-01-21",1,7,6,6,null],["2026-01-17",1,7,6,9,null],["2026-01-20",1,7,6,9,null],["2026-01-14",1,7,6,9,null],["2026-01-16",1,7,6,23,null],["2026-01-15",1,7,6,9,null],["2026-01-15",1,7,6,9,null],["2026-01-15",1,7,6,9,null],["2026-01-14",1,7,6,9,null],["2026-01-14",1,7,6,4,null],["2026-01-14",1,7,6,0,null],["2026-01-13",1,7,6,10,null],["2026-01-08",1,7,6,9,null],["2026-01-12",1,7,6,9,null],["2026-01-10",1,7,6,9,null],["2026-01-08",1,7,6,9,null],["2026-01-09",1,7,6,4,null],["2026-01-12",1,7,6,24,null],["2026-01-12",1,7,6,9,null],["2026-01-12",1,7,6,9,null],["2026-01-12",1,7,6,23,null],["2026-01-08",1,7,6,9,null],["2026-01-07",1,7,6,9,null],["2026-01-06",1,7,6,9,null],["2026-01-07",1,7,6,9,null],["2026-01-03",1,7,6,9,null],["2026-01-03",1,7,6,9,null],["2026-01-05",1,7,6,9,null],["2026-01-02",1,7,6,9,null],["2026-01-22",1,7,6,9,null],["2026-07-10",0,7,6,18,null],["2026-07-10",0,7,6,9,null],["2026-07-09",0,7,6,9,null],["2026-07-09",0,7,6,9,null],["2026-07-09",1,7,6,10,null],["2026-07-08",0,7,6,0,null],["2026-07-08",0,7,6,9,null],["2026-03-28",1,7,6,9,null],["2026-03-16",0,7,6,0,null],["2026-03-09",0,7,6,25,null],["2026-03-01",0,7,6,25,null],["2026-01-31",0,7,6,0,null],["2026-07-10",0,7,6,9,null],["2026-07-09",0,7,6,9,null],["2026-06-25",0,7,6,9,null],["2026-06-19",0,7,6,18,null],["2026-06-08",1,7,6,9,null],["2026-04-19",1,7,6,23,null],["2026-05-08",1,7,6,6,null],["2026-05-08",1,7,6,6,null],["2026-03-18",0,7,6,25,null],["2026-03-19",0,7,6,0,null],["2026-03-12",1,7,6,10,null],["2026-03-09",1,7,6,9,null],["2026-03-09",1,7,6,9,null],["2026-03-11",1,7,6,3,null],["2026-03-05",0,7,6,25,null],["2026-02-27",0,7,6,0,null],["2026-03-02",0,7,6,8,null],["2026-02-24",0,7,6,0,null],["2026-02-24",1,7,6,0,null],["2026-02-19",0,7,6,23,null],["2026-02-24",0,7,6,23,null],["2026-02-06",1,7,6,3,null],["2026-02-02",1,7,6,3,null],["2026-01-31",1,7,6,10,null],["2026-01-30",1,7,6,0,null],["2026-01-30",1,7,6,23,null],["2026-01-27",1,7,6,10,null],["2026-01-26",1,7,6,10,null],["2026-01-27",1,7,6,10,null],["2026-01-26",1,7,6,23,null],["2026-01-21",1,7,6,0,null],["2026-01-23",1,7,6,9,null],["2026-01-20",1,7,6,9,null],["2026-01-20",1,7,6,9,null],["2026-01-16",1,7,6,9,null],["2026-01-15",1,7,6,23,null],["2026-01-17",1,7,6,9,null],["2026-01-14",1,7,6,24,null],["2026-01-14",1,7,6,4,null],["2026-01-13",1,7,6,0,null],["2026-01-09",1,7,6,10,null],["2026-01-01",1,7,6,0,null],["2026-01-02",1,7,6,0,null],["2026-05-29",0,7,6,21,null],["2026-05-13",1,7,6,24,null],["2026-03-12",1,7,6,23,null],["2026-01-27",1,7,6,9,null],["2026-01-24",1,7,6,10,null],["2026-01-16",1,7,6,9,null],["2026-06-10",0,7,6,16,null],["2026-01-28",1,7,6,9,null],["2026-07-13",0,7,6,18,null],["2026-07-14",1,7,6,3,null],["2026-07-13",0,7,6,9,null],["2026-07-15",1,7,6,9,null],["2026-07-16",1,7,6,9,null],["2026-02-13",1,7,6,23,null],["2026-07-11",0,7,6,9,null],["2026-07-10",0,7,6,9,null],["2026-06-23",0,7,6,21,null],["2026-07-06",1,7,6,9,null],["2026-07-08",0,7,6,18,null],["2026-01-03",1,7,6,0,null],["2026-07-14",1,7,6,10,null],["2026-07-14",1,7,6,10,null],["2026-07-09",0,7,6,9,null],["2026-07-15",0,7,6,9,null],["2026-07-01",0,7,6,0,null],["2026-07-22",0,7,6,0,null],["2026-07-23",1,7,6,0,null],["2026-07-23",1,7,6,0,null],["2026-07-23",0,7,6,0,null],["2026-07-25",1,7,6,0,null],["2026-07-27",1,7,6,0,null],["2026-07-27",1,7,6,0,null],["2026-07-27",1,7,6,4,null],["2026-07-28",1,7,6,0,null],["2026-07-28",1,7,6,0,null],["2026-07-28",1,7,6,0,null],["2026-07-28",1,7,6,0,null],["2026-07-30",0,7,6,0,null],["2026-07-31",1,7,6,0,null],["2026-07-31",0,7,6,0,null],["2026-07-31",1,7,6,0,null],["2026-06-15",0,7,6,9,null],["2026-07-07",0,7,6,9,null],["2026-06-19",0,7,6,9,null],["2026-06-15",0,7,6,9,null],["2026-05-19",0,7,6,18,null],["2026-04-15",1,7,6,9,null],["2026-03-24",1,7,6,9,null],["2026-02-02",1,7,6,3,null],["2026-01-24",1,7,6,9,null],["2026-01-15",1,7,6,9,null],["2026-01-05",1,7,6,9,null],["2026-07-17",2,7,6,12,null],["2026-05-14",1,7,6,7,null],["2026-04-13",1,7,6,10,null],["2026-07-13",0,7,6,9,null],["2026-07-30",0,7,6,21,null]],"deals":[{"prop":"1464 Sunrise Pkwy, Petaluma, CA, 94954","stage":"Acquired","group":"✅ Closed / Won","src":"Direct Mail (Postcard)","camp":"Postcard","date":"2026-03-10","rev":35918.75,"who":"Denise Marks","note":"","tags":"Acquired; Deal Closed; Multiple Decision Makers; Postcard; THB Inquiry Call"},{"prop":"8227 Ney Ave, Oakland, CA, 94605","stage":"Acquired","group":"✅ Closed / Won","src":"Direct Mail (Checks)","camp":"Sorted Ugly Houses EQT (Checks)","date":"2026-02-09","rev":null,"who":"Dianne Andrews","note":"","tags":"Mailed Checks; Notice of Default (NOD); Property Evaluated; Property Visited; Sold; Verified ugly house"},{"prop":"1932 Chestnut Ave, Antioch, CA 94509","stage":"Acquired","group":"✅ Closed / Won","src":"Direct Mail (Checks)","camp":"","date":null,"rev":null,"who":"","note":"","tags":""},{"prop":"33025 Wildomar Rd, Lake Elsinore, CA, 92530","stage":"Cancelled Contract","group":"📝 Under Contract","src":"Direct Mail (Checks)","camp":"Postcard","date":"2026-01-28","rev":null,"who":"Jose Espinoza","note":"","tags":"Contract Signed; Follow up; Interested; Liens; Mailed Checks; Notice of Default (NOD); Postcard; Property Visited; Under Contract"},{"prop":"7400 Rudsdale St #7G, Oakland, CA, 94621","stage":"Cancelled Contract","group":"🚫 Cancelled Contract","src":"Direct Mail (Checks)","camp":"Liens","date":"2026-03-18","rev":null,"who":"Damond Dixon","note":"Jul 13: CONTRACT CANCELLED (per Juan) — was Under Contract at $166,000 → renegotiated to $120,000, then cancelled. Moved out of Under Contract.","tags":"Appointment Booked; Cherry Outbound; CHERRY-CALLED; Contract Signed; Liens; Mailed Checks; Property Evaluated; Seller Rejected offer; Under Contract"}]};
+
+/* The board's Source labels, mapped onto the Standard CRM Sources. The board
+   also offers a Direct Mail (Call-in) label that no item uses, and no Standard
+   CRM Source has been given for it, so it is left unmapped. */
+const DM_SRC_TO_LEAF = {
+  "Direct Mail (Postcard)": "Direct Mail - Postcard",
+  "Direct Mail (Checks)":   "Direct Mail - Check",
+  "Direct Mail (Letters)":  "Direct Mail - Letter",
+  "Direct Mail (Call-in)":  null
+};
+const DM_STAGES = DM_BOARD.stage.slice();
+const DM_DEAL_STAGES = ["Under Contract","Acquired","Cancelled Contract"];
+const DM_ITEMS = DM_BOARD.r.map(([dt,si,sti,gi,ci,rev]) => ({
+  dateText: dt,
+  date:     dt ? new Date(dt + "T00:00:00") : null,
+  source:   DM_BOARD.src[si],
+  leaf:     DM_SRC_TO_LEAF[DM_BOARD.src[si]] || null,
+  stage:    DM_BOARD.stage[sti],
+  group:    DM_BOARD.group[gi],
+  campaign: DM_BOARD.camp[ci],
+  revenue:  rev === null ? null : rev
+}));
+const DM_COVERED_LEAVES = new Set(
+  Object.values(DM_SRC_TO_LEAF).filter(Boolean));
+const DM_UNDATED  = DM_ITEMS.filter(i => !i.date);
+const DM_NO_CAMP  = DM_ITEMS.filter(i => !i.campaign).length;
+/* An item whose Lead Stage and board group point at different outcomes. */
+const DM_STAGE_GROUP_CONFLICT = DM_BOARD.deals.filter(d =>
+  (d.group === "📝 Under Contract"     && d.stage !== "Under Contract") ||
+  (d.group === "🚫 Cancelled Contract" && d.stage !== "Cancelled Contract") ||
+  (d.group === "✅ Closed / Won"           && d.stage !== "Acquired"));
+const DM_REVENUE_ROWS = DM_ITEMS.filter(i => i.revenue !== null);
+const dmStageCount = (stage) => DM_ITEMS.filter(i => i.stage === stage).length;
+
+/* =========================================================================
    3. CLASSIFIER — campaign first. The sheet's Lead Source column is kept for
       reference and never used to decide the Standard CRM Source.
    ========================================================================= */
@@ -692,6 +736,39 @@ function aggregate(range, master, leaf){
   a.inboundPerK       = a.mailKnown && c.pieces > 0 ? a.inbound / c.pieces * 1000 : null;
   a.inboundRate       = a.calls > 0 ? a.inbound / a.calls * 100 : null;
   a.apptPerCall       = a.calls > 0 ? a.apptBooked / a.calls * 100 : null;
+
+  /* Direct-mail pipeline stages from the monday.com board. The board covers
+     direct mail only, so a stage count is produced only when every Standard
+     CRM Source in scope is one the board carries. Anywhere else the cards say
+     the board holds nothing, rather than showing a zero.
+     The period filter runs on Date Received, because that is the only date the
+     board records — Lead Stage carries no timestamp of its own. */
+  const dmLeaves = scopeLeaves(master, leaf).filter(l => l !== NEEDS_REVIEW);
+  a.dmKnown = dmLeaves.length > 0 && dmLeaves.every(l => DM_COVERED_LEAVES.has(l));
+  a.dmStage = {};
+  DM_STAGES.forEach(st => { a.dmStage[st] = a.dmKnown ? 0 : null; });
+  a.dmItems = a.dmKnown ? 0 : null;
+  a.dmUndated = 0;
+  a.dmRevenue = null; a.dmRevenueRows = 0;
+  if (a.dmKnown){
+    const set = new Set(dmLeaves);
+    DM_ITEMS.forEach(it => {
+      if (!it.leaf || !set.has(it.leaf)) return;
+      if (!it.date){ a.dmUndated++; return; }
+      if (!inRange(it.date, range)) return;
+      a.dmItems++;
+      a.dmStage[it.stage]++;
+      if (it.revenue !== null){
+        a.dmRevenue = (a.dmRevenue || 0) + it.revenue;
+        a.dmRevenueRows++;
+      }
+    });
+  }
+  a.dmAcquired      = a.dmKnown ? a.dmStage["Acquired"]           : null;
+  a.dmCancelled     = a.dmKnown ? a.dmStage["Cancelled Contract"] : null;
+  a.dmUnderContract = a.dmKnown ? a.dmStage["Under Contract"]     : null;
+  a.dmAppointment   = a.dmKnown ? a.dmStage["Appointment"]        : null;
+  a.dmDead          = a.dmKnown ? a.dmStage["Dead"]               : null;
   return a;
 }
 
@@ -753,18 +830,43 @@ const MAIL_COMBINED_SETS = [
   ]}
 ];
 
+/* Direct-mail pipeline cards. Counted from the monday.com board, named for the
+   direct-mail category they measure. */
+const DM_KPI_KEYS = new Set(["dmItems","dmAcquired","dmCancelled",
+                             "dmUnderContract","dmAppointment","dmDead"]);
+function dmCards(what){
+  return [
+    {key:"dmItems",         title:"Direct Mail Leads On The Board (" + what + ")", fmt:"int", dir:"up"},
+    {key:"dmAcquired",      title:"Acquired Properties From " + what,              fmt:"int", dir:"up"},
+    {key:"dmCancelled",     title:"Cancelled Contracts From " + what,              fmt:"int", dir:"down"},
+    {key:"dmUnderContract", title:"Under Contract From " + what,                   fmt:"int", dir:"up"},
+    {key:"dmAppointment",   title:"Appointment Stage From " + what,                fmt:"int", dir:"up"},
+    {key:"dmDead",          title:"Dead / Not Interested From " + what,            fmt:"int", dir:"down"}
+  ];
+}
+const DM_PIPELINE_SETS = [
+  {leaf:"Direct Mail - Postcard", heading:"Direct Mail \u2014 Postcard pipeline", cards:dmCards("Postcard")},
+  {leaf:"Direct Mail - Check",    heading:"Direct Mail \u2014 Check pipeline",    cards:dmCards("Checks")},
+  {leaf:"Direct Mail - Letter",   heading:"Direct Mail \u2014 Letter pipeline",   cards:dmCards("Letters")}
+];
+const DM_PIPELINE_ALL = {
+  leaves:["Direct Mail - Postcard","Direct Mail - Check","Direct Mail - Letter"],
+  heading:"Direct Mail \u2014 all formats pipeline",
+  cards:dmCards("All Direct Mail")
+};
+
 /* Not in the call logs, and not invented. Shown on screen as a list. */
 const WITHHELD = [
   ["Qualified Leads","the daily tabs record Lead Type (Existing Interested Lead, Unresponsive, New Interested Lead, Invalid, Not Interested, Do not Mail, Neutral) but no qualified flag, and no rule has been given for which of those counts as qualified"],
   ["Offers Made","there is an Offer column in the daily tabs, but only 36 of 5,132 rows carry a value and they are free text rather than numbers, so no count can be produced from it"],
-  ["Contracts","no contract column in the daily tabs"],
-  ["Acquired Properties","no acquisition column in the daily tabs"],
-  ["Gross Revenue","no revenue column in the daily tabs"],
-  ["Net Revenue","no revenue column in the daily tabs"],
+  ["Contracts Signed","the direct-mail board's Lead Stage holds a lead's current stage, not the date it reached one, so a count of contracts signed inside a period cannot be read from it. What the board does support is how many leads stand at each stage now, which is what the pipeline cards show"],
+  ["Acquired Properties outside direct mail","the monday.com direct-mail board carries acquisitions for direct mail only. No board has been given for PPC, PPL, referral, TV, organic search, outbound or MLS, so those stay blank"],
+  ["Gross Revenue","the direct-mail board has a Revenue column, but it is filled on 1 of its 452 items, so no revenue total can be produced from it"],
+  ["Net Revenue","no cost-of-deal figures have been given, so a net cannot be worked out from the one revenue figure on the board"],
   ["ROI","needs revenue"],
   ["Cost Per Lead","needs a definition of a lead; the sheets offer New Interested Lead status, First Time Caller type, and a weekly New Leads total that disagree with each other"],
   ["Cost Per Qualified Lead","needs a qualified definition"],
-  ["Cost Per Acquisition","needs acquisitions"]
+  ["Cost Per Acquisition","the acquisitions and the mail cost do not line up in time. The three acquired properties were received in February and March 2026, while the Red Stone mail cost on record starts on 16 May 2026, so dividing one by the other would compare a cost to acquisitions it could not have produced. A rule for which mail spend belongs to which acquisition is needed first"]
 ];
 /* =========================================================================
    7. FORMATTING
@@ -841,6 +943,14 @@ function kpiCard(def, A, B){
       <p class="kpi-value empty">${DASH}</p>
       <div class="kpi-foot"><span class="chip flat">${ICON_CLOCK} no mail data</span>
         <p class="kpi-prev">not on the Red Stone board</p></div></article>`;
+  }
+  /* Pipeline stages exist only on the direct-mail board. */
+  if (DM_KPI_KEYS.has(def.key) && !A.dmKnown){
+    return `<article class="kpi">
+      <p class="kpi-title">${esc(def.title)}</p>
+      <p class="kpi-value empty">${DASH}</p>
+      <div class="kpi-foot"><span class="chip flat">${ICON_CLOCK} no board data</span>
+        <p class="kpi-prev">the direct-mail board covers direct mail only</p></div></article>`;
   }
   return `<article class="kpi">
     <p class="kpi-title">${esc(def.title)}</p>
@@ -1261,6 +1371,84 @@ function mailSection(cur, prevR){
     }).join("");
 }
 
+/* Direct-mail pipeline, straight off the monday.com board. */
+function dmPipelineSection(cur, prevR){
+  if (state.master !== "Direct Mail") return "";
+  const render = (heading, scopeLeaf, cards, note) => {
+    const a = aggregate(cur, "Direct Mail", scopeLeaf);
+    const b = prevR ? aggregate(prevR, "Direct Mail", scopeLeaf) : null;
+    return `<div class="sec" style="margin:18px 0 8px">
+        <h2 style="font-size:13.5px">${esc(heading)}</h2>
+        ${note ? `<p style="color:var(--warn-ink)">${esc(note)}</p>` : ""}</div>
+      <div class="kpi-grid">${cards.map(d => kpiCard(d,a,b)).join("")}</div>`;
+  };
+  const head = `<div class="sec"><h2>Pipeline from the direct-mail board</h2>
+    <p>Counted from the monday.com board \u201C📬 Direct Mail &amp; Postcard Leads\u201D,
+       ${DM_ITEMS.length} items read on 11 August 2026. The period filter runs on the board's
+       Date Received, the only date it records \u2014 Lead Stage carries no date of its own,
+       so a lead received in March and acquired in July counts in March.</p></div>`;
+  if (state.leaf !== ALL_LEAF){
+    const g = DM_PIPELINE_SETS.find(x => x.leaf === state.leaf);
+    if (!g) return "";
+    return head + render(g.heading, g.leaf, g.cards);
+  }
+  return head +
+    DM_PIPELINE_SETS.map(g => render(g.heading, g.leaf, g.cards)).join("") +
+    render(DM_PIPELINE_ALL.heading, DM_PIPELINE_ALL.leaves, DM_PIPELINE_ALL.cards);
+}
+
+/* Every stage on the board against every mail format, all 452 items, no filter.
+   This is the board's present state, which is what Lead Stage records. */
+function dmStageMatrix(){
+  const fmts = DM_BOARD.src.filter(sc => DM_ITEMS.some(i => i.source === sc));
+  const cell = (stage, src) => DM_ITEMS.filter(i =>
+    i.stage === stage && (src === null || i.source === src)).length;
+  return `<section class="card">
+    <div class="chart-head"><h3>Lead Stage by mail format</h3>
+      <span class="unit">${DM_ITEMS.length} items, whole board</span></div>
+    <div class="t-scroll" style="border:0"><table>
+      <thead><tr><th class="l">Lead Stage</th>${
+        fmts.map(f => `<th>${esc(f.replace("Direct Mail ","").replace(/[()]/g,""))}</th>`).join("")
+        }<th>All</th></tr></thead>
+      <tbody>${DM_STAGES.filter(st => cell(st,null) > 0 || DM_DEAL_STAGES.includes(st))
+        .map(st => `<tr${DM_DEAL_STAGES.includes(st) ? ' class="total"' : ''}>
+          <td class="l">${esc(st)}</td>
+          ${fmts.map(f => `<td>${cell(st,f).toLocaleString("en-US")}</td>`).join("")}
+          <td>${cell(st,null).toLocaleString("en-US")}</td></tr>`).join("")}
+        <tr class="total"><td class="l">All stages</td>
+          ${fmts.map(f => `<td>${DM_ITEMS.filter(i=>i.source===f).length.toLocaleString("en-US")}</td>`).join("")}
+          <td>${DM_ITEMS.length.toLocaleString("en-US")}</td></tr>
+      </tbody></table></div>
+    <p class="chart-note">Under Contract shows ${dmStageCount("Under Contract")} because the one
+      item sitting in the board's 📝 Under Contract group has its Lead Stage set to
+      Cancelled Contract. Both readings are shown rather than picked between.</p></section>`;
+}
+
+/* The five items the board places at a deal stage, quoted as the board holds them. */
+function dmDealTable(){
+  const d = DM_BOARD.deals;
+  return `<section class="card">
+    <div class="chart-head"><h3>Every deal-stage item on the board</h3>
+      <span class="unit">${d.length} items, whole board</span></div>
+    <div class="t-scroll" style="border:0"><table>
+      <thead><tr><th class="l">Property</th><th class="l">Lead Stage</th><th class="l">Board group</th>
+        <th class="l">Source</th><th class="l">Campaign / List</th><th class="l">Date Received</th>
+        <th>Revenue</th></tr></thead>
+      <tbody>${d.map(x => `<tr>
+        <td class="l">${esc(x.prop)}${x.who ? `<br><span style="color:var(--ink-3);font-size:12px">${esc(x.who)}</span>` : ""}</td>
+        <td class="l">${esc(x.stage)}</td>
+        <td class="l">${esc(x.group.replace(/^\S+\s/,""))}</td>
+        <td class="l">${esc(x.src.replace("Direct Mail ","").replace(/[()]/g,""))}</td>
+        <td class="l">${x.camp ? esc(x.camp) : `<span style="color:var(--ink-3)">blank</span>`}</td>
+        <td class="l">${x.date ? esc(x.date) : `<span style="color:var(--warn-ink)">blank</span>`}</td>
+        <td>${x.rev === null ? DASH : fmt(x.rev,"usd0")}</td></tr>`).join("")}
+      </tbody></table></div>
+    ${d.filter(x => x.note).map(x => `<p class="chart-note" style="margin-top:8px">
+      <b>${esc(x.prop)}</b> \u2014 ${esc(x.note)}</p>`).join("")}
+    <p class="chart-note">Revenue is filled on ${DM_REVENUE_ROWS.length} of the board's
+      ${DM_ITEMS.length} items, so it is shown per deal and never totalled.</p></section>`;
+}
+
 /* Horizontal breakdown of a count map, using the sheets' own value names. */
 function breakdown(title, map, total, note){
   const rows = Object.entries(map).sort((a,b) => b[1]-a[1]);
@@ -1303,6 +1491,7 @@ function pageDashboard(){
       "column blank or holding another value") : ""}</div>
 
   ${mailSection(cur, prevR)}
+  ${dmPipelineSection(cur, prevR)}
 
   <div class="sec"><h2>Trends</h2><p>All of ${REPORT_YEAR} from the call logs${
     highlightIndex() >= 0 ? ", with " + esc(cur.label) + " emphasized" : ""}.</p></div>
@@ -1563,6 +1752,31 @@ function pageOutcomes(){
       "the six values above added together")}
   </div>
 
+  ${dmPipelineSection(cur, prevR)}
+
+  <div class="sec"><h2>Direct-mail deal outcomes</h2>
+    <p>From the monday.com board \u201C📬 Direct Mail &amp; Postcard Leads\u201D
+       (board 18421423765, Equity Track Iriga \u2013 Operating System), read 11 August 2026.
+       The two tables below are the whole board, not the selected period, because Lead Stage is
+       a lead's stage right now rather than something the board dates.</p></div>
+  <div class="kpi-grid hero">
+    ${statTile("Acquired Properties", dmStageCount("Acquired").toLocaleString("en-US"),
+      "Lead Stage reads Acquired \u2014 " + [...new Set(DM_ITEMS
+        .filter(i=>i.stage==="Acquired")
+        .map(i=>i.source.replace("Direct Mail ","").replace(/[()]/g,"")))].join(", "))}
+    ${statTile("Cancelled Contracts", dmStageCount("Cancelled Contract").toLocaleString("en-US"),
+      "Lead Stage reads Cancelled Contract \u2014 " + [...new Set(DM_ITEMS
+        .filter(i=>i.stage==="Cancelled Contract")
+        .map(i=>i.source.replace("Direct Mail ","").replace(/[()]/g,"")))].join(", "))}
+    ${statTile("Still Under Contract", dmStageCount("Under Contract").toLocaleString("en-US"),
+      "no item's Lead Stage reads Under Contract, though one sits in that group")}
+    ${statTile("Revenue Recorded", DM_REVENUE_ROWS.length ? fmt(DM_REVENUE_ROWS
+        .reduce((t,i)=>t+i.revenue,0),"usd0") : DASH,
+      "on " + DM_REVENUE_ROWS.length + " of " + DM_ITEMS.length + " items, so not a revenue total")}
+  </div>
+  ${dmStageMatrix()}
+  ${dmDealTable()}
+
   <div class="sec"><h2>Lead Type</h2><p>The sheets' own Lead Status column.</p></div>
   ${breakdown("Lead Type", A.status, A.calls || 1)}
 
@@ -1667,14 +1881,26 @@ function pageSync(){
   const A = aggregate({from:new Date(2026,0,1), to:new Date(2026,11,31)}, ALL_MASTERS, ALL_LEAF);
   return `<div class="page-head"><h2>Data Sync</h2>
     <p>Where the numbers come from, and what still disagrees.</p></div>
-  ${notice("info", `<p><b>The call-log data in this app was read manually from Drive on
-    11 August 2026</b> — all 32 weekly sheets in the 2026 Call Logs folder. There is no live
-    connection yet: nothing re-reads Drive on its own, and no Monday.com board is connected.</p>`, true)}
+  ${notice("info", `<p><b>Everything here was read manually on 11 August 2026</b> — all 32 weekly
+    sheets in the 2026 Call Logs folder in Drive, the Red Stone upload board for mail piece counts
+    and cost, and the monday.com board \u201C📬 Direct Mail &amp; Postcard Leads\u201D
+    (board 18421423765) for the direct-mail pipeline. There is no live connection: nothing
+    re-reads Drive or monday.com on its own, so these figures are a snapshot.</p>`, true)}
   <div class="kpi-grid hero">
     ${statTile("Sheets Read", "32", "every tab, from the xlsx export")}
     ${statTile("Call Records", fmt(DATA.records.length,"int"), "from the daily tabs")}
     ${statTile("Distinct Campaigns", fmt(VALUES.campaigns.length,"int"))}
     ${statTile("Red Stone Jobs", String(REDSTONE_JOBS.length), MAILED_JOBS.length + " mailed")}
+  </div>
+  <div class="kpi-grid">
+    ${statTile("Direct-Mail Board Items", DM_ITEMS.length.toLocaleString("en-US"),
+      "board 18421423765, read 11 Aug 2026")}
+    ${statTile("Acquired Properties", dmStageCount("Acquired").toLocaleString("en-US"),
+      "from the board's Lead Stage column")}
+    ${statTile("Cancelled Contracts", dmStageCount("Cancelled Contract").toLocaleString("en-US"),
+      "from the board's Lead Stage column")}
+    ${statTile("Board Items With Revenue", DM_REVENUE_ROWS.length + " of " + DM_ITEMS.length,
+      "so no revenue total is produced")}
   </div>
 
   <div class="sec"><h2>Which tab the numbers come from</h2>
@@ -1716,7 +1942,21 @@ function pageSync(){
        ["Check no column holds layout names",
         "4 rows, carrying values like Layout0, Layout4 rather than check numbers"],
        ["Red Stone has no check jobs",
-        "checks are the largest mail format by call volume and have no piece count or cost"]
+        "checks are the largest mail format by call volume and have no piece count or cost"],
+       ["Direct-mail board: Lead Stage has no date",
+        "it holds where a lead stands now, not when it got there, so the period filter can only run on Date Received"],
+       ["Direct-mail board: one item is in two outcomes at once",
+        "33025 Wildomar Rd sits in the 📝 Under Contract group while its Lead Stage reads Cancelled Contract"],
+       ["Direct-mail board: an acquired property has no Date Received",
+        "1932 Chestnut Ave, Antioch is Acquired from checks with no date, campaign or lead name, so it falls in no period"],
+       ["Direct-mail board: Revenue is 0.2% populated",
+        "1 of 452 items, so no revenue figure can be totalled and no ROI worked out"],
+       ["Direct-mail board: Campaign / List is blank on 76 items",
+        "44 postcard and 32 check items, so mail cost cannot be traced to a Red Stone job"],
+       ["Direct-mail board: no Red Stone job ID column",
+        "the board records Campaign / List but not the mail batch, so a lead cannot be tied to the job that mailed it"],
+       ["Direct-mail board: two items name a format that contradicts their Source",
+        "33025 Wildomar Rd is Direct Mail (Checks) with campaign Postcard, and one unnamed item is Direct Mail (Checks) with campaign Free Inspection Report EQT (Letter)"]
       ].map(([a,b]) => `<div class="map-row"><span class="from"><b>${esc(a)}</b>${
         b ? `<br><span style="color:var(--ink-3);font-size:12.5px">${esc(b)}</span>` : ""}</span>
         <span class="arrow">open</span><span class="to">needs a rule</span></div>`).join("")}

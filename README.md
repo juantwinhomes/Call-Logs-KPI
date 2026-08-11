@@ -79,11 +79,81 @@ Offer · Check no.
 | Direct Mail - Check | **none on the board** | — | — | — |
 | _in production, not mailed_ | 1 | 3,515 | $1,947.49 | — |
 
+### Direct-mail pipeline — monday.com board `18421423765`
+
+Board **📬 Direct Mail & Postcard Leads**, in the *Equity Track Iriga – Operating System*
+workspace, read 11 August 2026. 452 items, one per property. This is the only source in
+the app for acquisitions and cancelled contracts.
+
+| Lead Stage | Postcard | Checks | Letters | All |
+|---|---|---|---|---|
+| New | 20 | 50 | 0 | 70 |
+| Contacted | 39 | 40 | 0 | 79 |
+| Interested | 10 | 2 | 0 | 12 |
+| Appointment | 2 | 6 | 0 | 8 |
+| Under Contract | 0 | 0 | 0 | **0** |
+| **Acquired** | **1** | **2** | 0 | **3** |
+| **Cancelled Contract** | 0 | **2** | 0 | **2** |
+| Dead | 97 | 180 | 1 | 278 |
+| **All stages** | **169** | **282** | **1** | **452** |
+
+The board's `Source` labels map onto the Standard CRM Sources one for one:
+`Direct Mail (Postcard)` → `Direct Mail - Postcard`, `Direct Mail (Checks)` →
+`Direct Mail - Check`, `Direct Mail (Letters)` → `Direct Mail - Letter`. A fourth label,
+`Direct Mail (Call-in)`, exists on the board but no item uses it and no Standard CRM
+Source has been given for it, so it is left unmapped.
+
+**The five deal-stage items, quoted as the board holds them:**
+
+| Property | Lead Stage | Board group | Source | Campaign / List | Date Received | Revenue |
+|---|---|---|---|---|---|---|
+| 1464 Sunrise Pkwy, Petaluma — Denise Marks | Acquired | ✅ Closed / Won | Postcard | Postcard | 2026-03-10 | **$35,918.75** |
+| 8227 Ney Ave, Oakland — Dianne Andrews | Acquired | ✅ Closed / Won | Checks | Sorted Ugly Houses EQT (Checks) | 2026-02-09 | — |
+| 1932 Chestnut Ave, Antioch | Acquired | ✅ Closed / Won | Checks | _blank_ | _blank_ | — |
+| 33025 Wildomar Rd, Lake Elsinore — Jose Espinoza | Cancelled Contract | 📝 Under Contract | Checks | Postcard | 2026-01-28 | — |
+| 7400 Rudsdale St #7G, Oakland — Damond Dixon | Cancelled Contract | 🚫 Cancelled Contract | Checks | Liens | 2026-03-18 | — |
+
+The Rudsdale note on the board reads: *"Jul 13: CONTRACT CANCELLED (per Juan) — was Under
+Contract at $166,000 → renegotiated to $120,000, then cancelled. Moved out of Under
+Contract."*
+
+**Four things about this board constrain what the app can say:**
+
+1. **`Lead Stage` has no date.** It records where a lead stands *now*, not when it got
+   there. The period filter therefore runs on `Date Received`, the only date the board
+   carries, so a lead received in March and acquired in July counts in March. The
+   Outcomes tables are shown whole-board rather than period-filtered for the same reason.
+2. **One item is in two outcomes at once.** 33025 Wildomar Rd sits in the 📝 Under
+   Contract group while its `Lead Stage` reads Cancelled Contract. Both readings are
+   shown; neither is picked.
+3. **An acquired property has no `Date Received`.** 1932 Chestnut Ave (Acquired, Checks)
+   has no date, campaign or lead name, so it falls in no period and appears only in the
+   whole-board tables. Period cards therefore total 2 acquisitions, whole-board 3.
+4. **`Revenue` is filled on 1 of 452 items** ($35,918.75 on the Petaluma postcard deal),
+   so it is shown per deal and never totalled — no revenue KPI and no ROI comes from it.
+
 ### Not reported, and not estimated
 
 On the Outcomes page, each with the reason stated: Qualified Leads · Offers Made ·
-Contracts · Acquired Properties · Gross Revenue · Net Revenue · ROI · Cost Per Lead ·
-Cost Per Qualified Lead · Cost Per Acquisition.
+Contracts Signed · Acquired Properties outside direct mail · Gross Revenue · Net
+Revenue · ROI · Cost Per Lead · Cost Per Qualified Lead · Cost Per Acquisition.
+
+Two of these moved off the withheld list for direct mail on 11 August 2026:
+**Acquired Properties** and **Cancelled Contracts** now come from the monday.com
+direct-mail board above. They stay withheld everywhere else, because that board covers
+direct mail only and no board has been given for PPC, PPL, referral, TV, organic search,
+outbound or MLS.
+
+**Cost Per Acquisition is still withheld even though acquisitions now exist**, because
+the acquisitions and the mail cost do not line up in time: the three acquired properties
+were received in February and March 2026, while the Red Stone mail cost on record starts
+16 May 2026. Dividing one by the other would charge a cost against acquisitions it could
+not have produced. A rule for which mail spend belongs to which acquisition is needed
+first.
+
+**Contracts Signed** cannot be counted at all from the board, because `Lead Stage` holds
+a current stage rather than a dated event. What the board does support — how many leads
+stand at each stage right now — is what the pipeline cards show.
 
 Three columns exist but cannot carry a KPI:
 
@@ -199,14 +269,16 @@ changes — every KPI, the source table and the ROI maths read from that one reg
 
 | Page | Purpose |
 |---|---|
-| Dashboard | Executive KPIs, postcard KPIs, eight trend charts, source table |
+| Dashboard | Call KPIs for the selected source, mail performance and pipeline cards under Direct Mail, six trend charts, source table |
 | Source Performance | Funnel per source; toggle master vs Standard CRM Source, sort, search, CSV export |
-| Direct Mail | Postcard and Letter KPIs plus the Red Stone job log |
-| Calls | Call-log reporting by month, agent, direction and caller type |
-| Deals | Lead-to-acquisition funnel and the deal register |
+| Call Log | Call-log reporting by month, agent, direction and caller type |
+| Outcomes | Appointment dispositions, direct-mail deal outcomes from the monday.com board, Lead Type and disposition breakdowns, and the withheld list with reasons |
 | Classification | Review queue, rule table, manual overrides, classifier self-test |
-| Data Sync | Google Drive and Monday.com sync shell — disabled until Phase 2 |
+| Data Sync | Every source read, which tab each number came from, and every problem found |
 | Admin Settings | Connections, source costing, taxonomy, field mapping |
+
+Mail performance and pipeline cards appear only when the Master Source is **Direct
+Mail** — selecting any other master hides them rather than showing zeroes.
 
 ## Design and correctness notes
 
@@ -234,16 +306,39 @@ They are listed on the Data Sync page.
 
 1. **Column layout changes mid-year.** A Postcard column appears from April onward,
    shifting the lead-total column. Mapping must be header-driven, never positional.
-2. **27 July – 2 August 2026 is entirely blank** — must read as no data, not zero.
-3. **6 – 12 July 2026 does not reconcile** — source columns sum to 23, reported lead
+2. **The 27 July – 2 August 2026 summary block is blank**, but the week is not empty —
+   its daily tabs hold 196 calls. Only the hand-entered summary was never filled in.
+3. **The `Week` roll-up tab runs short in 5 of the 32 workbooks** — Jan wk1 305 against
+   310, Jan wk2 150 against 157, May wk3 70 against 76, Jun wk1 134 against 153. The
+   daily tabs are treated as primary.
+4. **6 – 12 July 2026 does not reconcile** — source columns sum to 23, reported lead
    total says 43.
-4. **25 of 32 weekly sheets label their totals `Week 3 TOTAL`** regardless of week.
-5. **One agent's Total formula is missing**, showing blank where others show a value.
-6. **An August 12 block carries an August 10 date** in the appointments table.
-7. **Postcards mailed are not attributed.** 61,915 pieces went out through Red Stone
-   while the call logs attribute only a handful of leads to Postcard — responses are
-   most likely landing under Direct Mail. This one materially distorts postcard
+5. **25 of 32 weekly sheets label their totals `Week 3 TOTAL`** regardless of week.
+6. **One agent's Total formula is missing**, showing blank where others show a value.
+7. **An August 12 block carries an August 10 date** in the appointments table.
+8. **Postcards mailed are not attributed.** 58,107 pieces went out through Red Stone
+   while the call logs attribute 474 calls to Postcard by campaign — much of the
+   response is landing in the unclassified bucket. This materially distorts postcard
    response rate and needs a decision before Phase 4.
+
+### On the monday.com direct-mail board
+
+9. **`Lead Stage` has no date**, so the period filter can only run on `Date Received`.
+10. **33025 Wildomar Rd is in two outcomes at once** — 📝 Under Contract group,
+    Cancelled Contract stage.
+11. **1932 Chestnut Ave is Acquired with no `Date Received`**, campaign or lead name, so
+    it falls in no period.
+12. **`Revenue` is 0.2% populated** — 1 of 452 items.
+13. **`Campaign / List` is blank on 76 items** — 44 postcard, 32 check — so mail cost
+    cannot be traced to a Red Stone job for them.
+14. **There is no Red Stone job ID column on the board.** It records `Campaign / List`
+    but not the mail batch, so a lead cannot be tied to the job that mailed it. The
+    scaffold board `18421418228` in the Twin Home Buyer workspace does have a
+    *Mail Batch (Redstone Job ID)* column, but it holds 1 empty item.
+15. **Two items name a mail format that contradicts their `Source`** — 33025 Wildomar Rd
+    is `Direct Mail (Checks)` with campaign `Postcard`, and one unnamed item is
+    `Direct Mail (Checks)` with campaign `Free Inspection Report EQT (Letter)`.
+16. **236 of 452 items are named `No property address`.**
 
 ## Open questions
 
@@ -262,7 +357,17 @@ They are listed on the Data Sync page.
    worked example shows spend $42,580 and net revenue $268,994 against ROI 645.40%,
    but that formula yields 531.5% (and `Net ÷ Cost` yields 631.7%). The stated formula
    is implemented. Confirm which is intended.
-5. **Postcard response attribution** — see data-quality item 7.
+5. **Postcard response attribution** — see data-quality item 8.
+6. **Check costing is still missing.** Checks are the largest mail format on both
+   sources — 1,298 calls in the logs and 282 of the 452 board items, including 2 of the
+   3 acquisitions and both cancelled contracts — and the Red Stone board has no check
+   jobs, so `Direct Mail - Check` shows no piece count, no cost and no cost ratios.
+7. **Which mail spend belongs to which acquisition?** Needed before Cost Per
+   Acquisition can be produced — see the note under *Not reported*.
+8. **Should the board's `Lead Stage` or its group win** where they disagree, as on
+   33025 Wildomar Rd? Both are shown for now.
+9. **Revenue for the other four deal-stage items**, and the deal costs behind the one
+   revenue figure, would unlock Net Revenue and ROI.
 
 ## Repository
 
