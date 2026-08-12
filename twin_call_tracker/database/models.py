@@ -7,10 +7,12 @@ from datetime import datetime, timezone
 from typing import Any, Iterable
 
 from database.database import connection, execute, query, transaction
-from utils.config import (S_AUTO_WRITE, S_LAST_CHECKED, S_LAST_SYNC, S_MAPPINGS,
+from utils.config import (S_AUTO_WRITE, S_FOLDER_ID, S_FOLDER_NAME, S_LAST_CHECKED, S_LAST_SYNC,
+                          S_MAPPINGS,
                           S_MONDAY_BOARD_ID, S_MONDAY_BOARD_NAME, S_MONDAY_COLUMNS,
                           S_MONDAY_WORKSPACE_ID, S_MONDAY_WORKSPACE_NAME, S_SHEET_ID,
-                          S_SHEET_NAME, S_WORKSHEET)
+                          S_SHEET_NAME, S_TARGET_MODE, S_WORKSHEET, TARGET_FOLDER,
+                          TARGET_SHEET)
 from utils.logger import get_logger
 
 log = get_logger("models")
@@ -115,22 +117,40 @@ class SyncConfig:
     worksheet: str = ""
     mappings: list[ColumnMapping] = field(default_factory=list)
     auto_write: bool = False
+    # In TARGET_FOLDER mode spreadsheet_id and worksheet are left empty here and
+    # filled in per refresh by services.target_resolver, so they are not settings
+    # the user has to maintain as the months roll over.
+    target_mode: str = TARGET_SHEET
+    folder_id: str = ""
+    folder_name: str = ""
+
+    @property
+    def follows_folder(self) -> bool:
+        return self.target_mode == TARGET_FOLDER
 
     # The item-name pseudo column: Monday exposes the title outside column_values.
     NAME_COLUMN_ID = "__name__"
 
     @property
     def is_complete(self) -> bool:
-        return bool(self.board_id and self.spreadsheet_id and self.worksheet and self.mappings)
+        if not (self.board_id and self.mappings):
+            return False
+        if self.follows_folder:
+            return bool(self.folder_id)
+        return bool(self.spreadsheet_id and self.worksheet)
 
     def missing_reasons(self) -> list[str]:
         out = []
         if not self.board_id:
             out.append("no Monday.com board is chosen")
-        if not self.spreadsheet_id:
-            out.append("no Google spreadsheet is chosen")
-        if not self.worksheet:
-            out.append("no worksheet tab is chosen")
+        if self.follows_folder:
+            if not self.folder_id:
+                out.append("no Google Drive folder is chosen")
+        else:
+            if not self.spreadsheet_id:
+                out.append("no Google spreadsheet is chosen")
+            if not self.worksheet:
+                out.append("no worksheet tab is chosen")
         if not self.mappings:
             out.append("no column mappings are defined")
         else:
@@ -154,6 +174,9 @@ class SyncConfig:
             worksheet=s.get(S_WORKSHEET, "") or "",
             mappings=[ColumnMapping.from_dict(m) for m in raw_maps if isinstance(m, dict)],
             auto_write=s.get_bool(S_AUTO_WRITE, False),
+            target_mode=s.get(S_TARGET_MODE, TARGET_SHEET) or TARGET_SHEET,
+            folder_id=s.get(S_FOLDER_ID, "") or "",
+            folder_name=s.get(S_FOLDER_NAME, "") or "",
         )
 
     def save(self, s: SettingsStore) -> None:
@@ -167,8 +190,13 @@ class SyncConfig:
         s.set(S_WORKSHEET, self.worksheet)
         s.set_json(S_MAPPINGS, [m.as_dict() for m in self.mappings])
         s.set_bool(S_AUTO_WRITE, self.auto_write)
-        log.info("Configuration saved: board=%s sheet=%s tab=%s mappings=%d auto_write=%s",
-                 self.board_id or "-", self.spreadsheet_id or "-", self.worksheet or "-",
+        s.set(S_TARGET_MODE, self.target_mode)
+        s.set(S_FOLDER_ID, self.folder_id)
+        s.set(S_FOLDER_NAME, self.folder_name)
+        log.info("Configuration saved: board=%s target=%s sheet=%s tab=%s folder=%s "
+                 "mappings=%d auto_write=%s",
+                 self.board_id or "-", self.target_mode, self.spreadsheet_id or "-",
+                 self.worksheet or "-", self.folder_id or "-",
                  len(self.mappings), self.auto_write)
 
 

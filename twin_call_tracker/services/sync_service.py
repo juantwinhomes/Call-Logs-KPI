@@ -95,6 +95,9 @@ class SyncPlan:
     checkpoint_candidate: str = ""
     sheet_rows: int = 0
     warnings: list[str] = field(default_factory=list)
+    # In folder mode, the path resolution walked, e.g.
+    # "2026 Call Logs / 08.) August 2026 Call Logs / Week 06-10 Aug / Thu".
+    target_path: str = ""
 
     @property
     def has_work(self) -> bool:
@@ -149,11 +152,13 @@ def content_hash(values: Iterable[str]) -> str:
 class SyncService:
     def __init__(self, auth: AuthService, settings: SettingsStore | None = None,
                  monday: MondayService | None = None,
-                 sheets: GoogleSheetsService | None = None) -> None:
+                 sheets: GoogleSheetsService | None = None,
+                 drive: Any | None = None) -> None:
         self.auth = auth
         self.settings = settings or SettingsStore()
         self.monday = monday or MondayService(auth.monday)
         self.sheets = sheets or GoogleSheetsService(auth.google)
+        self._drive = drive
         self.items_repo = SyncedItemRepo()
         self.runs = SyncRunRepo()
         self.errors = ErrorRepo()
@@ -198,10 +203,34 @@ class SyncService:
         return cfg
 
     # ------------------------------------------------------------------- plan #
+    def drive(self) -> Any:
+        if self._drive is None:
+            from services.google_drive_service import GoogleDriveService
+            self._drive = GoogleDriveService(self.auth.google)
+        return self._drive
+
+    def resolve_target(self, cfg: SyncConfig) -> tuple[SyncConfig, str]:
+        """In folder mode, work out this refresh's sheet and tab.
+
+        Returns the config to actually use plus a description of the path taken.
+        Resolving here rather than in apply() means a preview and the write that
+        follows it are aimed at the same tab even if someone edits another sheet
+        in the folder in between.
+        """
+        if not cfg.follows_folder:
+            return cfg, ""
+        from services.target_resolver import TargetResolver
+
+        target = TargetResolver(self.drive(), self.sheets).resolve(cfg.folder_id)
+        return replace(cfg, spreadsheet_id=target.spreadsheet_id,
+                       spreadsheet_name=target.spreadsheet_name,
+                       worksheet=target.worksheet), target.describe()
+
     def plan(self, cfg: SyncConfig, progress: ProgressFn = _noop,
              cancelled: CancelFn = lambda: False) -> SyncPlan:
         started = datetime.now(timezone.utc).replace(microsecond=0)
-        plan = SyncPlan(config=cfg, started_at=started.isoformat())
+        cfg, where = self.resolve_target(cfg)
+        plan = SyncPlan(config=cfg, started_at=started.isoformat(), target_path=where)
 
         since = parse_iso(self.checkpoint.get())
         progress(Stage.CONNECT_MONDAY, "")

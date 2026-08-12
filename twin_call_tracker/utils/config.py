@@ -178,10 +178,19 @@ S_MONDAY_COLUMNS = "monday.monitored_columns"    # JSON list of column ids
 S_SHEET_ID = "google.spreadsheet_id"
 S_SHEET_NAME = "google.spreadsheet_name"
 S_WORKSHEET = "google.worksheet"
+S_TARGET_MODE = "google.target_mode"             # TARGET_SHEET | TARGET_FOLDER
+S_FOLDER_ID = "google.folder_id"                 # only read in TARGET_FOLDER mode
+S_FOLDER_NAME = "google.folder_name"
 S_MAPPINGS = "mapping.columns"                   # JSON list of {monday_id,monday_title,sheet_header}
 S_AUTO_WRITE = "sync.auto_write"                 # "1" | "0"
 S_LAST_SYNC = "sync.last_successful_checkpoint"  # ISO8601 UTC
 S_LAST_CHECKED = "sync.last_checked"             # ISO8601 UTC
+
+# Where a refresh writes. TARGET_SHEET is one spreadsheet chosen once.
+# TARGET_FOLDER follows a Drive folder and re-resolves the month subfolder, the
+# most recently changed sheet in it and its newest tab on every refresh.
+TARGET_SHEET = "sheet"
+TARGET_FOLDER = "folder"
 
 
 @dataclass
