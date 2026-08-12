@@ -387,9 +387,9 @@ const MONDAY_COL_MAIL = "date_mm49b97s";
 /* BEGIN GENERATED MONDAY_COST */
 const MONDAY_COST = {
   "281322":  609.31, "281822":  920.73, "282621":  600.52, "282914": 1015.72,
-  "283693": 1334.60, "284126": 3906.76, "284128":  327.83, "285043": 4111.19,
+  "283693": 1334.60, "284126": 3906.76, "284128":  111.11, "285043": 4111.19,
   "285989": 1769.39, "285990": 2807.90, "287106": 1599.55, "287141": 4274.54,
-  "289244": 1376.02, "290763": 2485.82, "291195": 1672.15, "291483": 1947.49
+  "289244": 1376.02, "290763": 2485.82, "291195": 1672.15
 };
 /* END GENERATED MONDAY_COST */
 /* =========================================================================
@@ -508,6 +508,17 @@ function liveDrift(){
   });
   return {cost, mail};
 }
+/* Invoiced total per job, read off the PDF attached to that job in the
+   Red Stone portal. GENERATED - run scripts/sync_redstone_cost.py.
+   Do not hand-edit between the markers. */
+/* BEGIN GENERATED REDSTONE_COST */
+const REDSTONE_COST = {
+  "281322":  609.31, "281822":  920.73, "282621":  600.52, "282914": 1015.72,
+  "283693": 1334.60, "284126": 3906.76, "284128":  327.83, "285043": 4111.19,
+  "285989": 1769.39, "285990": 2807.90, "287106": 1599.55, "287141": 4274.54,
+  "289244": 1376.02, "290763": 2214.38, "291195": 1672.15, "291483": 1947.49
+};
+/* END GENERATED REDSTONE_COST */
 const MAILED_JOBS   = REDSTONE_JOBS.filter(j => j.status === "Done");
 const IN_PRODUCTION = REDSTONE_JOBS.filter(j => j.status !== "Done");
 const POSTCARD_JOBS = MAILED_JOBS.filter(j => j.fmt === "Postcard");
@@ -973,7 +984,7 @@ function suppliedCost(range, master, leaf){
   leaves.forEach(l => (COSTING[l].jobs || []).forEach(j => {
     const d = jobDate(j);
     if (d.date < range.from || d.date > range.to) return;
-    cost += j.cost;
+    cost += (REDSTONE_COST[j.job] ?? j.cost);
     costMonday += (liveCost(j.job) ?? MONDAY_COST[j.job] ?? j.cost);
     pieces += j.qty; jobs++;
     if (d.estimated) estimated++;
@@ -997,7 +1008,7 @@ function boardSpend(range, master, leaf){
     const d = jobDate(j);
     if (d.date < range.from || d.date > range.to) return;
     monday   += (liveCost(j.job) ?? MONDAY_COST[j.job] ?? j.cost);
-    redstone += j.cost;
+    redstone += (REDSTONE_COST[j.job] ?? j.cost);
   }));
   return {monday, redstone};
 }
