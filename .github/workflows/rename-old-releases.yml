@@ -1,0 +1,55 @@
+name: Rename old releases to Twin Call Tracker
+
+# One-off maintenance job. The v1.0.0 and v1.1.0 releases were published before
+# the application was renamed, so they still read "Monday + Google Sheets Sync".
+# Editing a release needs a token with contents:write, which only the Actions
+# runner has, so the rename happens here rather than from a local shell.
+#
+# Runs on push so no manual dispatch is needed, and is safe to run repeatedly:
+# it only touches releases whose name still carries the old product name.
+
+on:
+  push:
+    paths:
+      - ".github/workflows/rename-old-releases.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  rename:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Retitle any release still using the old product name
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          old="Monday + Google Sheets Sync"
+
+          gh api "repos/$REPO/releases" --paginate \
+            --jq '.[] | [.id, .tag_name, .name] | @tsv' > releases.tsv
+
+          renamed=0
+          while IFS=$'\t' read -r id tag name; do
+            case "$name" in
+              "$old"*)
+                new="Twin Call Tracker $tag"
+                echo "$tag: '$name' -> '$new'"
+                gh api -X PATCH "repos/$REPO/releases/$id" -f "name=$new" --silent
+                renamed=$((renamed + 1))
+                ;;
+              *)
+                echo "$tag: '$name' already correct, leaving it alone"
+                ;;
+            esac
+          done < releases.tsv
+
+          echo "Renamed $renamed release(s)."
+
+      - name: Show the final release names
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: gh release list --repo "$REPO"
