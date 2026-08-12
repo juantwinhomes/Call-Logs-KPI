@@ -1004,7 +1004,7 @@ function suppliedCost(range, master, leaf){
   leaves.forEach(l => (COSTING[l].jobs || []).forEach(j => {
     const d = jobDate(j);
     if (d.date < range.from || d.date > range.to) return;
-    cost += (REDSTONE_COST[j.job] ?? j.cost);
+    cost += (rsCost(j.job) ?? REDSTONE_COST[j.job] ?? j.cost);
     costMonday += (liveCost(j.job) ?? MONDAY_COST[j.job] ?? j.cost);
     pieces += j.qty; jobs++;
     if (d.estimated) estimated++;
@@ -1028,7 +1028,7 @@ function boardSpend(range, master, leaf){
     const d = jobDate(j);
     if (d.date < range.from || d.date > range.to) return;
     monday   += (liveCost(j.job) ?? MONDAY_COST[j.job] ?? j.cost);
-    redstone += (REDSTONE_COST[j.job] ?? j.cost);
+    redstone += (rsCost(j.job) ?? REDSTONE_COST[j.job] ?? j.cost);
   }));
   return {monday, redstone};
 }
@@ -1798,6 +1798,7 @@ function filterBar(){
       ${selectedMonthPartial() ? '<span class="warn-inline">partial month — to 11 August</span>' : ""}
       ${prev && prev.note ? `<span class="warn-inline">${esc(prev.note)}</span>` : ""}
       ${liveControl()}
+      ${rsControl()}
     </div>
     ${calendarPanel()}</section>`;
 }
@@ -1846,6 +1847,9 @@ function wireFilters(){
   on("liveConnect","click", livePrompt);
   on("liveRefresh","click", () => { const k = liveKey(); k ? liveConnect(k) : livePrompt(); });
   on("liveForget","click",  liveForget);
+  on("rsRefresh","click",   () => rsPrompt(false));
+  on("rsForce","click",     () => rsPrompt(true));
+  on("rsForget","click",    rsForget);
   on("fCompare","change",e => { state.compare = e.target.value; render(); });
   on("fFrom","change",   e => { state.customFrom = e.target.value; render(); });
   on("fTo","change",     e => { state.customTo = e.target.value; render(); });
@@ -1853,6 +1857,146 @@ function wireFilters(){
 
 /* The board-data control. Reads as one line in the filter bar: where the
    board figures came from, and what you can do about it. */
+/* -------------------------------------------------------------------------
+   Red Stone, through the local helper.
+
+   Red Stone sends no CORS headers, so this page cannot read anything from
+   redstonemail.com no matter what credentials it holds - the browser refuses
+   to hand over the response. scripts/serve.py is the way round it: a small
+   server on your own machine that signs in, downloads the invoices, caches
+   them, and answers this page. Credentials go to the helper and never live
+   in this file or in browser storage.
+
+   Without the helper the page is exactly what it was: the generated
+   REDSTONE_COST snapshot, correct as of the last sync.
+   ------------------------------------------------------------------------- */
+const RS = {
+  helper: false,            // does a helper answer?
+  status: "off",            // off | loading | live | error
+  cost: {}, readAt: null, error: null, code: null,
+  fetched: 0, reused: 0, failed: []
+};
+const rsCost = (job) => RS.status === "live" && job in RS.cost ? RS.cost[job] : null;
+
+/* Same origin when the helper serves the page; the explicit address covers a
+   dashboard.html opened straight off disk. */
+const RS_BASE = location.protocol.startsWith("http") ? "" : "http://127.0.0.1:8787";
+
+async function rsProbe(){
+  try {
+    const r = await fetch(RS_BASE + "/api/state", {cache:"no-store"});
+    if (!r.ok) return;
+    const s = await r.json();
+    RS.helper = !!s.helper;
+    RS.savedUser = s.credentials && s.credentials.user || null;
+    render();
+  } catch (e) { /* no helper: the snapshot stands, and the card says so */ }
+}
+
+async function rsRefresh(creds){
+  RS.status = "loading"; RS.error = null; RS.code = null; render();
+  let res, body;
+  try {
+    res = await fetch(RS_BASE + "/api/redstone/refresh", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify(creds || {})
+    });
+    body = await res.json();
+  } catch (e) {
+    return rsFail("nohelper",
+      "The local helper is not answering. Start it with "
+      + "python3 scripts/serve.py, then try again.");
+  }
+  if (res.status === 401 || body.needCredentials)
+    return rsFail("auth", body.error === "no credentials"
+      ? "The helper needs your Red Stone login."
+      : "Red Stone rejected that login. Note the password begins with a space.");
+  if (res.status === 409) return rsFail("busy", "A refresh is already running.");
+  if (!res.ok || !body.ok)
+    return rsFail("failed", body.error || ("The helper answered " + res.status + "."));
+
+  RS.cost = body.costs || {};
+  RS.fetched = (body.fetched || []).length;
+  RS.reused  = (body.reused  || []).length;
+  RS.failed  = body.failed || [];
+  RS.status = "live"; RS.readAt = new Date(); RS.error = null; RS.code = null;
+  render();
+}
+
+function rsFail(code, message){
+  RS.status = "error"; RS.code = code; RS.error = message; RS.cost = {};
+  render();
+}
+
+function rsForget(){
+  RS.status = "off"; RS.cost = {}; RS.readAt = null;
+  RS.error = null; RS.code = null; RS.failed = [];
+  render();
+}
+
+/* Jobs the helper priced that the saved snapshot has never seen. This is the
+   answer to "did anything new turn up", which is the whole reason to refresh. */
+function rsNew(){
+  return Object.keys(RS.cost).filter(j => !(j in REDSTONE_COST));
+}
+function rsDrift(){
+  return Object.keys(RS.cost).filter(j => j in REDSTONE_COST
+    && Math.abs(RS.cost[j] - REDSTONE_COST[j]) > 0.005);
+}
+
+function rsControl(){
+  const chip = (tone,text) => `<span class="pill ${tone}" style="margin-left:2px">${esc(text)}</span>`;
+  const btn  = (id,label)  => `<button id="${id}" type="button" class="live-btn">${esc(label)}</button>`;
+
+  if (RS.status === "loading")
+    return `<span class="live-wrap">Red Stone: ${chip("warn","signing in and reading invoices…")}</span>`;
+
+  if (RS.status === "live"){
+    const t = RS.readAt.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"});
+    const fresh = rsNew(), moved = rsDrift();
+    const note = fresh.length ? chip("warn", fresh.length + " new job" + (fresh.length===1?"":"s")
+                                             + " not in the saved copy")
+               : moved.length ? chip("warn", moved.length + " cost changed since the last sync")
+               : chip("won","matches the saved copy");
+    const how = chip("won", RS.fetched + " downloaded · " + RS.reused + " from cache");
+    const bad = RS.failed.length ? chip("warn", RS.failed.length + " could not be read") : "";
+    return `<span class="live-wrap">Red Stone: ${chip("won","live · read " + t)}${note}${how}${bad}
+      ${btn("rsRefresh","Refresh")}${btn("rsForce","Re-download all")}${btn("rsForget","Use saved copy")}</span>`;
+  }
+
+  if (RS.status === "error"){
+    const fix = {
+      nohelper:"The dashboard still shows the saved copy below.",
+      auth:    "Try again and enter the login.",
+      busy:    "Wait for it to finish.",
+    }[RS.code] || "The saved copy is still shown below.";
+    return `<span class="live-wrap">Red Stone: ${chip("warn","saved copy")}
+      <span class="live-err">${esc(RS.error)} ${esc(fix)}</span>
+      ${btn("rsRefresh","Retry")}</span>`;
+  }
+
+  if (!RS.helper)
+    return `<span class="live-wrap">Red Stone: ${chip("won","saved copy")}
+      <span class="live-err">Run python3 scripts/serve.py to refresh invoices from the
+      portal. Costs below are from the last sync.</span></span>`;
+
+  return `<span class="live-wrap">Red Stone: ${chip("won","saved copy")}
+    ${btn("rsRefresh","Refresh from Red Stone")}</span>`;
+}
+
+/* The helper asks for the login only when it has none stored. */
+async function rsPrompt(force){
+  if (RS.savedUser) return rsRefresh({force:!!force});
+  const user = window.prompt("Red Stone username", "");
+  if (!user) return;
+  const pass = window.prompt(
+    "Red Stone password.\n\nIt goes to the local helper on this machine, never "
+    + "into this page or this file. Mind any leading space.", "");
+  if (pass === null) return;
+  await rsRefresh({user, password:pass, remember:true, force:!!force});
+  rsProbe();
+}
+
 function liveControl(){
   const chip = (tone,text) =>
     `<span class="pill ${tone}" style="margin-left:2px">${esc(text)}</span>`;
@@ -2914,6 +3058,7 @@ render();
 (function(){
   const key = liveKey();
   if (key) liveConnect(key);
+  rsProbe();
 })();
 
 </script>
