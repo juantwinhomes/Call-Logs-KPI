@@ -1949,6 +1949,7 @@ function calendarPanel(){
 const PAGES = [
   {id:"dashboard", label:"Dashboard"},
   {id:"source",    label:"Source Performance"},
+  {id:"mail",      label:"Mail Performance"},
   {id:"calls",     label:"Call Log"},
   {id:"outcomes",  label:"Outcomes"},
   {id:"review",    label:"Classification"},
@@ -1966,8 +1967,10 @@ function renderRail(){
     return `<button type="button" data-page="${p.id}"${cur}><span>${esc(p.label)}</span>${badge}</button>`;
   };
   const rail = document.getElementById("rail");
-  rail.innerHTML = '<p class="rail-label">Reporting</p>' + PAGES.slice(0,4).map(btn).join("") +
-                   '<p class="rail-label">Configuration</p>' + PAGES.slice(4).map(btn).join("");
+  /* Reporting is the first five, Configuration the rest. Sliced by count rather
+     than a group field to keep PAGES a flat list of id and label. */
+  rail.innerHTML = '<p class="rail-label">Reporting</p>' + PAGES.slice(0,5).map(btn).join("") +
+                   '<p class="rail-label">Configuration</p>' + PAGES.slice(5).map(btn).join("");
   rail.querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
     state.page = b.dataset.page; render();
   }));
@@ -2160,8 +2163,14 @@ function kpiSub(){
   return "All Standard CRM Sources inside " + state.master + " combined.";
 }
 
-function mailSection(cur, prevR){
-  if (state.master !== "Direct Mail") return "";
+/* force is set by the Mail Performance page, which is about mail whatever the
+   Lead Source filter happens to be. A Direct Mail leaf chosen in the filter bar is
+   still honoured; anything else falls back to all formats. */
+function mailLeaf(){
+  return state.master === "Direct Mail" && state.leaf !== ALL_LEAF ? state.leaf : ALL_LEAF;
+}
+function mailSection(cur, prevR, force){
+  if (!force && state.master !== "Direct Mail") return "";
   /* Say plainly what these mail figures leave out, and where it went, rather than
      letting the difference sit unexplained between the leaves and the sheets. */
   const gap = MAIL_UNPLACED.total ? `${notice("warn", `<p><b>${
@@ -2188,16 +2197,16 @@ function mailSection(cur, prevR){
         ${note ? `<p style="color:var(--warn-ink)">${esc(note)}</p>` : ""}</div>
       <div class="kpi-grid">${cards.map(d => kpiCard(d,a,b)).join("")}</div>`;
   };
-  if (state.leaf !== ALL_LEAF){
-    const g = MAIL_CARD_SETS.find(x => x.leaf === state.leaf);
+  if (mailLeaf() !== ALL_LEAF){
+    const g = MAIL_CARD_SETS.find(x => x.leaf === mailLeaf());
     if (!g) return gap;
     return gap + `<div class="sec"><h2>Mail performance</h2>
         <p>Piece counts and cost from the Red Stone board. Call counts from the call logs.</p></div>` +
       render(g.heading, g.leaf, g.cards,
         leafCosted(g.leaf) ? "" : "no piece count or cost on the Red Stone board for this format")
-      + postcardResponseSection(cur);
+      + postcardResponseSection(cur, force);
   }
-  return gap + postcardResponseSection(cur) + `<div class="sec"><h2>Mail performance by format</h2>
+  return gap + postcardResponseSection(cur, force) + `<div class="sec"><h2>Mail performance by format</h2>
       <p>Piece counts and cost from the Red Stone board. Call counts from the call logs.
          Inbound Calls Per 1,000 divides calls made in this period by pieces mailed in it, and the two
          do not line up inside a month: a batch mailed late in a month is answered in the next one. For
@@ -2281,9 +2290,9 @@ const median = (a) => {
   const s = a.slice().sort((x,y) => x-y), m = s.length >> 1;
   return s.length % 2 ? s[m] : (s[m-1] + s[m]) / 2;
 };
-function postcardResponseSection(cur){
-  if (state.master !== "Direct Mail") return "";
-  if (!scopeLeaves(state.master, state.leaf).includes("Direct Mail - Postcard")) return "";
+function postcardResponseSection(cur, force){
+  if (!force && state.master !== "Direct Mail") return "";
+  if (!scopeLeaves("Direct Mail", mailLeaf()).includes("Direct Mail - Postcard")) return "";
   const R = postcardResponse();
   if (!R) return "";
   const shown = R.dates.filter(j => {
@@ -2298,7 +2307,7 @@ function postcardResponseSection(cur){
   const camp = {};
   DATA.records.forEach(r => {
     if (!inRange(r.date, cur)) return;
-    if (!scopeLeaves(state.master, state.leaf).includes(resolved(r).leaf || NEEDS_REVIEW)) return;
+    if (!scopeLeaves("Direct Mail", mailLeaf()).includes(resolved(r).leaf || NEEDS_REVIEW)) return;
     const k = campaignOf(r) || "(no campaign named)";
     const c = camp[k] || (camp[k] = {calls:0, inbound:0, firstTime:0, phones:new Set()});
     if (r.direction === DIR_INBOUND || r.direction === DIR_OUTBOUND) c.calls++;
@@ -2391,6 +2400,69 @@ function postcardResponseSection(cur){
           <div class="fbar" style="height:14px;width:${
             (v.calls / (campRows[0][1].calls || 1) * 100).toFixed(1)}%;background:var(--s1)"></div>
           </div></td></tr>`).join("")}</tbody></table></div></section>`;
+}
+
+/* Mail performance has its own page rather than sitting inside the Dashboard: it
+   is about batches and pieces, which have their own dates and their own cadence,
+   and it was only visible when the Lead Source filter happened to be Direct Mail.
+   Here it shows whatever the filter says, honouring a Direct Mail format if one is
+   chosen and otherwise covering all of them. */
+function pageMail(){
+  const cur = currentRange(), prevR = compareRange(cur);
+  const leaf = mailLeaf();
+  const A = aggregate(cur, "Direct Mail", leaf);
+  const B = prevR ? aggregate(prevR, "Direct Mail", leaf) : null;
+  const scoped = state.master === "Direct Mail" && state.leaf !== ALL_LEAF;
+  return `${filterBar()}
+  <div class="page-head"><h2>Mail Performance</h2>
+    <p>Piece counts, cost and mail dates from the Red Stone board; call counts from the call
+       logs. ${scoped ? `Showing <b>${esc(leaf)}</b>, as selected above.`
+                      : `Showing all mail formats. Pick a Standard CRM Source above to narrow it${
+                          state.master === "Direct Mail" ? "" : " — the Lead Source filter does not"
+                          + " limit this page, since it is about mail whatever else is selected"}.`}
+       ${esc(cur.label)}.</p></div>
+
+  ${(() => {
+    /* Counted straight off the Red Stone jobs rather than through the costing
+       layer, which withholds a combined figure whenever one format in scope has no
+       board data - true of Check - and would show a dash here as though nothing had
+       been mailed. Per-format cards below still withhold properly. */
+    const fmts = leaf === ALL_LEAF ? null : new Set([leaf.replace("Direct Mail - ","")]);
+    const inP = MAILED_JOBS.filter(j => {
+      if (!j.mail) return false;
+      if (fmts && !fmts.has(j.fmt)) return false;
+      const d = new Date(j.mail + "T00:00:00");
+      return d >= cur.from && d <= cur.to;
+    });
+    const pieces = inP.reduce((s,j) => s + j.qty, 0);
+    const cost   = inP.reduce((s,j) => s + j.cost, 0);
+    const dates  = [...new Set(inP.map(j => j.mail))].sort();
+    /* The rate has to count calls for the same formats the pieces cover. Check
+       mail is not on the Red Stone board, so counting its calls against postcard
+       and letter pieces would inflate the rate - across the year that reads 10.47
+       per 1,000 rather than the true 3.7 for postcard. So inbound here is measured
+       over exactly the formats that were mailed in this period. */
+    const fmtLeaves = [...new Set(inP.map(j => "Direct Mail - " + j.fmt))];
+    const M = fmtLeaves.length ? aggregate(cur, "Direct Mail", fmtLeaves) : null;
+    const inb = M ? M.inbound : null;
+    const covers = fmtLeaves.map(l => l.replace("Direct Mail - ","")).join(" and ");
+    return `<div class="kpi-grid hero">
+      ${statTile("Batches Mailed", String(inP.length),
+        dates.length ? `mailed ${dates.map(d => d.slice(5)).join(", ")}` : "none in this period")}
+      ${statTile("Pieces Mailed", fmt(pieces,"int"),
+        inP.length ? `across ${inP.length} Red Stone job${inP.length===1?"":"s"}` : "")}
+      ${statTile("Mail Cost", fmt(cost,"usd0"),
+        pieces ? fmt(cost/pieces,"usd2") + " per piece" : "")}
+      ${statTile("Inbound Calls", inb === null ? DASH : fmt(inb,"int"),
+        pieces && inb !== null
+          ? `${fmt(inb/pieces*1000,"dec2")} per 1,000 \u2014 ${esc(covers)} only, matching the pieces`
+          : "no mail in this period to measure against")}
+      ${statTile("Cost Per Inbound Call", inb && cost ? fmt(cost/inb,"usd2") : DASH,
+        inb ? `${esc(covers)} cost over ${esc(covers)} inbound calls` : "")}
+    </div>`;
+  })()}
+
+  ${mailSection(cur, prevR, true)}`;
 }
 
 /* Direct-mail pipeline, straight off the monday.com board. */
@@ -2569,7 +2641,6 @@ function pageDashboard(){
     ${A.ctNotRecorded ? statTile("Caller Type Not Recorded", fmt(A.ctNotRecorded,"int"),
       "column blank or holding another value") : ""}</div>
 
-  ${mailSection(cur, prevR)}
   ${dmPipelineSection(cur, prevR)}
 
   <div class="sec"><h2>Trends</h2><p>${trendIsDaily()
@@ -3413,6 +3484,7 @@ function render(){
   switch(state.page){
     case "dashboard": main.innerHTML = pageDashboard(); break;
     case "source":    main.innerHTML = pageSource();    break;
+    case "mail":      main.innerHTML = pageMail();      break;
     case "calls":     main.innerHTML = pageCalls();     break;
     case "outcomes":  main.innerHTML = pageOutcomes();  break;
     case "review":    main.innerHTML = pageReview();    break;
