@@ -777,6 +777,75 @@ function resolved(r){
           manual:false, review:!!r.auto.review, reason:r.auto.reason};
 }
 
+/* ---- Campaign names, as typed and as grouped -------------------------------
+   The same campaign is written several ways across the sheets. "Postcard Ugly
+   Houses - South Bay (669)" appears four ways - with and without the space
+   before the dash, with SB for South Bay, with the area code jammed against the
+   bracket - which split its 20 calls into 6, 6, 5 and 3 wherever campaigns are
+   counted. "Postcard Liens Lakeshore Elsinore (619(" closes with the wrong
+   bracket. "Postcard - 70% Distress" and "Postcard 70% Distress" are one
+   campaign written twice.
+
+   So a campaign is grouped by a key that ignores punctuation, spacing, case and
+   the SB / South Bay abbreviation, and displayed in whichever spelling the
+   sheets use most. The raw value still shows on the row in the Call Log, because
+   that is what the sheet says; only the grouping is canonicalised. Nothing is
+   merged across genuinely different campaigns - the key keeps every letter and
+   digit, so Liens 510 never merges with Liens 707. */
+function campaignKey(c){
+  return (c || "").toLowerCase()
+    .replace(/\bsouth ?bay\b/g, "sb")
+    .replace(/[^a-z0-9]/g, "");
+}
+const CAMPAIGN_CANON = (() => {
+  const seen = new Map();
+  DATA.records.forEach(r => {
+    if (!r.campaign) return;
+    const k = campaignKey(r.campaign);
+    if (!seen.has(k)) seen.set(k, new Map());
+    const m = seen.get(k);
+    m.set(r.campaign, (m.get(r.campaign) || 0) + 1);
+  });
+  const out = new Map();
+  seen.forEach((forms, k) => {
+    let best = "", n = -1;
+    forms.forEach((count, form) => { if (count > n){ n = count; best = form; } });
+    out.set(k, best);
+  });
+  return out;
+})();
+const CAMPAIGN_VARIANTS = (() => {
+  const seen = new Map();
+  DATA.records.forEach(r => {
+    if (!r.campaign) return;
+    const k = campaignKey(r.campaign);
+    if (!seen.has(k)) seen.set(k, new Set());
+    seen.get(k).add(r.campaign);
+  });
+  return [...seen.values()].filter(s => s.size > 1).length;
+})();
+/* The campaign to count by. */
+const campaignOf = (r) => r.campaign ? (CAMPAIGN_CANON.get(campaignKey(r.campaign)) || r.campaign) : "";
+
+/* Mail calls the classifier cannot place: the Lead Source column says Direct Mail
+   or names a format, but the campaign never says which format, so they belong to
+   no mail leaf and are absent from the Postcard, Letter and Check figures. Kept
+   as a number the page can state rather than a silence. */
+const MAIL_UNPLACED = (() => {
+  const mail = DATA.records.filter(r =>
+    /direct ?mail|postcard|letter|check/i.test((r.sheetSource||"") + " " + (r.campaign||"")));
+  const un = mail.filter(r => !resolved(r).leaf);
+  const by = {};
+  un.forEach(r => { const k = campaignOf(r) || "(blank campaign)"; by[k] = (by[k]||0)+1; });
+  /* Counted exactly: a handful of these mail-mentioning rows resolve to a non-mail
+     leaf because their campaign names another channel, so "placed in a mail leaf"
+     is not simply the remainder. */
+  const MAIL_LEAVES = new Set(["Direct Mail - Postcard","Direct Mail - Letter","Direct Mail - Check"]);
+  const placed = mail.filter(r => MAIL_LEAVES.has(resolved(r).leaf)).length;
+  return {total: un.length, ofMail: mail.length, placed, elsewhere: mail.length - un.length - placed,
+          byCampaign: by};
+})();
+
 /* Distinct values actually present, so nothing is hardcoded from memory. */
 const VALUES = (() => {
   const g = f => [...new Set(DATA.records.map(r => r[f]).filter(Boolean))];
@@ -1996,6 +2065,24 @@ function kpiSub(){
 
 function mailSection(cur, prevR){
   if (state.master !== "Direct Mail") return "";
+  /* Say plainly what these mail figures leave out, and where it went, rather than
+     letting the difference sit unexplained between the leaves and the sheets. */
+  const gap = MAIL_UNPLACED.total ? `${notice("warn", `<p><b>${
+      MAIL_UNPLACED.total.toLocaleString("en-US")} further calls name direct mail but not a
+      format</b>, so they are in none of the figures below. Their Lead Source column says
+      Direct Mail, or the campaign names a mail piece, but the campaign never says postcard,
+      letter or check &mdash; ${Object.entries(MAIL_UNPLACED.byCampaign)
+        .sort((a,b) => b[1]-a[1]).slice(0,6)
+        .map(([k,v]) => `${esc(k)} ${v}`).join(", ")}${
+        Object.keys(MAIL_UNPLACED.byCampaign).length > 6
+          ? ` and ${Object.keys(MAIL_UNPLACED.byCampaign).length - 6} more` : ""}.
+      Postcard, Letter and Check together hold ${
+        MAIL_UNPLACED.placed.toLocaleString("en-US")} of the
+      ${MAIL_UNPLACED.ofMail.toLocaleString("en-US")} calls that mention mail at all${
+        MAIL_UNPLACED.elsewhere ? `, and ${MAIL_UNPLACED.elsewhere} more sit under another source
+        because their campaign names a different channel` : ""}. Naming
+      the format in the campaign, or setting these on the Classification page, is what moves
+      them in &mdash; they are not counted anywhere until then.</p>`)}` : "";
   const render = (heading, scopeLeaf, cards, note) => {
     const a = aggregate(cur, "Direct Mail", scopeLeaf);
     const b = prevR ? aggregate(prevR, "Direct Mail", scopeLeaf) : null;
@@ -2006,13 +2093,13 @@ function mailSection(cur, prevR){
   };
   if (state.leaf !== ALL_LEAF){
     const g = MAIL_CARD_SETS.find(x => x.leaf === state.leaf);
-    if (!g) return "";
-    return `<div class="sec"><h2>Mail performance</h2>
+    if (!g) return gap;
+    return gap + `<div class="sec"><h2>Mail performance</h2>
         <p>Piece counts and cost from the Red Stone board. Call counts from the call logs.</p></div>` +
       render(g.heading, g.leaf, g.cards,
         leafCosted(g.leaf) ? "" : "no piece count or cost on the Red Stone board for this format");
   }
-  return `<div class="sec"><h2>Mail performance by format</h2>
+  return gap + `<div class="sec"><h2>Mail performance by format</h2>
       <p>Piece counts and cost from the Red Stone board. Call counts from the call logs.</p></div>` +
     MAIL_CARD_SETS.map(g => render(g.heading, g.leaf, g.cards,
       leafCosted(g.leaf) ? "" : "no piece count or cost on the Red Stone board for this format")).join("") +
@@ -2766,7 +2853,7 @@ function pageReview(){
   revs.forEach(r => {
     const res = resolved(r);
     byReason[res.reason || "unknown"] = (byReason[res.reason || "unknown"] || 0) + 1;
-    const k = (r.campaign || "(blank)");
+    const k = campaignOf(r) || "(blank)";
     byCampaign[k] = (byCampaign[k] || 0) + 1;
   });
   const per = 40;
@@ -2902,6 +2989,8 @@ function pageSync(){
         "the OVERALL lead total reads 36 while its own source columns sum to 18 - the only sheet where the two disagree"],
        ["23 of 32 sheets label the total row Week 3 TOTAL","regardless of the actual week; 7 say Week 1 and 2 say Week 4"],
        ["Property Leads spelled three ways","Property Leads, Property leads, PropertyLeads"],
+       ["Campaign names typed inconsistently",
+        `${CAMPAIGN_VARIANTS} campaigns are written more than one way and are counted as one — "Postcard Ugly Houses - South Bay (669)" appears four ways, and one closes with "(619(" instead of "(619)"`],
        ["Lead Status column is unused",
         "5,199 of 5,200 rows blank; the one populated cell holds a person name"],
        ["Offer column is 0.7% populated",
