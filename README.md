@@ -392,18 +392,37 @@ They are listed on the Data Sync page.
 15. **`Check no` holds layout names** — 4 rows, carrying `Layout0`, `Layout1`,
     `Layout0, Layout6`, `Layout0, Layout4, Layout3`.
 16. **`Address` is populated on 553 of 5,162 rows.**
-17. **504 rows have the contact name `View`** — a link label that leaked out of the CRM
-    export rather than a person's name.
+17. **502 rows have the contact name `View`** — but the cell is a hyperlink, and the link
+    is the useful part: column C of every daily tab points at
+    `my.reiblackbook.com/contacts/<id>`, on 4,793 of the 5,110 rows. So the caller's real
+    name and property can be read off the CRM lead even where the sheet only says
+    &ldquo;View&rdquo;, and that is how the postcard response-time table is built. What
+    is *not* recoverable is a lead created with a phone number and nothing else, which is
+    what most postcard callers are: of the 70 postcard first-time callers since the
+    programme began, only 37 have a full name anywhere and 21 an address.
 18. **11 different spellings mean "no caller name"** — `No Caller Name`, `No caller name`,
     `, No Caller Name`, `, No caller Name`, `Caller name not provided`, `, No Info`,
     `, No info provided` and more, so they do not group.
 19. **One call has no phone number at all**; every other row carries one.
 20. **21 daily tabs hold no calls**, including every day after 10 August, which is as far
     as the logs go.
-21. **Postcards mailed are not attributed.** 58,107 pieces went out through Red Stone
-   while the call logs attribute 474 calls to Postcard by campaign — much of the
+21. **Postcards mailed are not attributed.** 61,622 pieces went out through Red Stone
+   while the call logs attribute 227 inbound calls to Postcard by campaign — much of the
    response is landing in the unclassified bucket. This materially distorts postcard
    response rate and needs a decision before Phase 4.
+22. **The inbound call rate was measuring two different periods.** It divided a full
+   year of postcard inbound calls by three months of postcard pieces: 227 calls against
+   61,622 pieces read 3.68 per 1,000, when 122 of those calls came in before 16 May and
+   no postcard in this programme had been posted. Inbound is now counted from three days
+   after the first batch in the period went out — 106 calls, **0.17% or 1.72 per 1,000**.
+23. **Days from mailing to call was capped by the mailing cadence.** The old method
+   credited every postcard first-time caller to the most recent batch mailed before
+   their call. Batches go out roughly weekly, so the longest lag it could ever report
+   was 17 days, and a homeowner who rang two months after their postcard was booked as a
+   few days after somebody else's. It is now measured only on callers whose own piece is
+   known — matched on address + ZIP, on street, or on their name in the mailed list —
+   which gives 13 homeowners, a **20.1-day average, a 14-day median and a spread of 3 to
+   62 days**. Four of the 13 rang more than a month after their postcard.
 
 ### On the monday.com direct-mail board
 
