@@ -981,6 +981,27 @@ function suppliedCost(range, master, leaf){
   return {cost, costMonday, pieces, jobs, estimated};
 }
 
+/* Board and invoice spend across whichever leaves in scope actually carry
+   costing. suppliedCost is deliberately all-or-nothing: a piece count or a
+   cost-per-piece spanning an uncosted format would be a partial total wearing
+   the clothes of a real one. Spend is different. These two cards answer "what
+   does this source say we spent", and for a format the source has never
+   carried a job, its answer is nothing rather than unknown. Summing the costed
+   leaves is therefore the source's own total, which is why the all-formats
+   figure ties to the board's total row. */
+function boardSpend(range, master, leaf){
+  const leaves = scopeLeaves(master, leaf).filter(l => l !== NEEDS_REVIEW && leafCosted(l));
+  if (!leaves.length) return {monday:null, redstone:null};
+  let monday = 0, redstone = 0;
+  leaves.forEach(l => (COSTING[l].jobs || []).forEach(j => {
+    const d = jobDate(j);
+    if (d.date < range.from || d.date > range.to) return;
+    monday   += (liveCost(j.job) ?? MONDAY_COST[j.job] ?? j.cost);
+    redstone += j.cost;
+  }));
+  return {monday, redstone};
+}
+
 function aggregate(range, master, leaf){
   const scope = new Set(scopeLeaves(master, leaf));
   const a = {
@@ -1018,8 +1039,9 @@ function aggregate(range, master, leaf){
   a.uniquePhones = a.phones.size;
   a.mailKnown = c.cost !== null;
   a.spend  = c.cost;
-  a.spendMonday   = a.mailKnown ? c.costMonday : null;
-  a.spendRedstone = c.cost;
+  const bs = boardSpend(range, master, leaf);
+  a.spendMonday   = bs.monday;
+  a.spendRedstone = bs.redstone;
   a.mailed = c.pieces;
   a.jobs = c.jobs; a.estimatedJobs = c.estimated;
   a.costPerPiece      = a.mailKnown && c.pieces > 0 ? c.cost / c.pieces : null;
@@ -1091,8 +1113,7 @@ const CALLER_KPIS = [
   {key:"repeat",    title:"Repeat Callers",        fmt:"int", dir:"up"},
   {key:"followUp",  title:"Follow Up Responders",  fmt:"int", dir:"up"}
 ];
-const MAIL_KPI_KEYS = new Set(["mailed","spend","spendMonday","spendRedstone",
-                               "costPerPiece","costPerInboundCall",
+const MAIL_KPI_KEYS = new Set(["mailed","spend","costPerPiece","costPerInboundCall",
                                "costPerCall","inboundPerK"]);
 /* Named for the direct-mail category they measure. */
 const MAIL_CARD_SETS = [
@@ -1100,8 +1121,8 @@ const MAIL_CARD_SETS = [
     {key:"mailed",            title:"Postcards Mailed",                       fmt:"int",  dir:"flat"},
     {key:"spend",             title:"Postcard Mail Cost",                     fmt:"usd0", dir:"flat"},
     {key:"costPerPiece",      title:"Cost Per Postcard",                      fmt:"usd2", dir:"down"},
-    {key:"spendMonday",       title:"Monday.com / KPI Cost",                  fmt:"usd0", dir:"flat"},
-    {key:"spendRedstone",     title:"Redstone Cost",                          fmt:"usd0", dir:"flat"},
+    {key:"spendMonday",       title:"Monday.com / KPI Cost — Postcard",       fmt:"usd0", dir:"flat"},
+    {key:"spendRedstone",     title:"Redstone Cost — Postcard",               fmt:"usd0", dir:"flat"},
     {key:"inbound",           title:"Total Inbound Callers From Postcard",    fmt:"int",  dir:"up"},
     {key:"inboundPerK",       title:"Inbound Calls Per 1,000 Postcards",      fmt:"dec2", dir:"up"},
     {key:"costPerInboundCall",title:"Cost Per Inbound Postcard Call",         fmt:"usd2", dir:"down"}
@@ -1118,6 +1139,8 @@ const MAIL_CARD_SETS = [
     {key:"mailed",            title:"Letters Mailed",                         fmt:"int",  dir:"flat"},
     {key:"spend",             title:"Letter Mail Cost",                       fmt:"usd0", dir:"flat"},
     {key:"costPerPiece",      title:"Cost Per Letter",                        fmt:"usd2", dir:"down"},
+    {key:"spendMonday",       title:"Monday.com / KPI Cost — Letter",         fmt:"usd0", dir:"flat"},
+    {key:"spendRedstone",     title:"Redstone Cost — Letter",                 fmt:"usd0", dir:"flat"},
     {key:"inbound",           title:"Total Inbound Callers From Letters",     fmt:"int",  dir:"up"},
     {key:"inboundPerK",       title:"Inbound Calls Per 1,000 Letters",        fmt:"dec2", dir:"up"},
     {key:"costPerInboundCall",title:"Cost Per Inbound Letter Call",           fmt:"usd2", dir:"down"}
@@ -1134,6 +1157,8 @@ const MAIL_COMBINED_SETS = [
    heading:"Direct Mail — all formats", cards:[
     {key:"mailed",       title:"Total Pieces Mailed (All Direct Mail)",       fmt:"int",  dir:"flat"},
     {key:"costPerPiece", title:"Cost Per Mail (All Direct Mail)",             fmt:"usd2", dir:"down"},
+    {key:"spendMonday",  title:"Monday.com / KPI Cost — All Direct Mail",     fmt:"usd0", dir:"flat"},
+    {key:"spendRedstone",title:"Redstone Cost — All Direct Mail",             fmt:"usd0", dir:"flat"},
     {key:"inbound",      title:"Total Inbound Callers From Direct Mail",      fmt:"int",  dir:"up"}
   ]}
 ];
@@ -1884,8 +1909,15 @@ function mailSection(cur, prevR){
       leafCosted(g.leaf) ? "" : "no piece count or cost on the Red Stone board for this format")).join("") +
     MAIL_COMBINED_SETS.map(g => {
       const missing = g.leaves.filter(l => !leafCosted(l));
+      /* Only the piece-count and per-piece cards are withheld here. The two
+         spend cards sum the formats the source actually carries, so they stay
+         readable and tie to the board's own total. */
+      const has = g.cards.some(c => c.key === "spendMonday");
       return render(g.heading, g.leaves, g.cards, missing.length
-        ? "withheld — " + missing.join(" and ") + (missing.length===1?" has":" have") + " no mail data" : "");
+        ? "piece counts withheld — " + missing.join(" and ")
+          + (missing.length===1 ? " has" : " have") + " no mail data"
+          + (has ? "; the spend below covers every job the board carries" : "")
+        : "");
     }).join("");
 }
 
