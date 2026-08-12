@@ -413,13 +413,32 @@ const MONDAY_COST = {
    fetch fails there by design. A blocked upgrade is never a blank card.
    ========================================================================= */
 const LIVE_KEY_STORE = "thb.monday.key";
+/* Remembered on this device, so the key is entered once rather than every
+   time the page opens. localStorage survives a closed tab and a reboot;
+   sessionStorage is the fallback where localStorage is unavailable (private
+   windows, some file:// setups) and lasts only for the tab.
+
+   The trade is deliberate and worth naming: a remembered key sits in this
+   browser profile until "Forget key" clears it. That is right for a local
+   copy on your own machine. It is still never written into this file, so a
+   published copy carries nothing and each viewer would supply their own. */
+const liveStores = () => {
+  const out = [];
+  try { if (window.localStorage)   out.push(localStorage);   } catch(e){}
+  try { if (window.sessionStorage) out.push(sessionStorage); } catch(e){}
+  return out;
+};
 const LIVE = {
   status: "off",              // off | loading | live | error
   cost: {}, mail: {},         // job id -> value, live only
   readAt: null, error: null, code: null
 };
-const liveKey = () => { try { return sessionStorage.getItem(LIVE_KEY_STORE) || ""; }
-                        catch(e){ return ""; } };
+const liveKey = () => {
+  for (const s of liveStores()){
+    try { const v = s.getItem(LIVE_KEY_STORE); if (v) return v; } catch(e){}
+  }
+  return "";
+};
 const liveCost = (job) => LIVE.status === "live" && job in LIVE.cost ? LIVE.cost[job] : null;
 const liveMail = (job) => LIVE.status === "live" && job in LIVE.mail ? LIVE.mail[job] : null;
 
@@ -478,7 +497,8 @@ async function liveConnect(key){
 
   LIVE.cost = cost; LIVE.mail = mail;
   LIVE.status = "live"; LIVE.readAt = new Date(); LIVE.error = null; LIVE.code = null;
-  try { sessionStorage.setItem(LIVE_KEY_STORE, key); } catch(e){}
+  const [store] = liveStores();
+  if (store){ try { store.setItem(LIVE_KEY_STORE, key); } catch(e){} }
   render();
 }
 
@@ -489,7 +509,7 @@ function liveFail(code, message){
 }
 
 function liveForget(){
-  try { sessionStorage.removeItem(LIVE_KEY_STORE); } catch(e){}
+  liveStores().forEach(s => { try { s.removeItem(LIVE_KEY_STORE); } catch(e){} });
   LIVE.status = "off"; LIVE.cost = {}; LIVE.mail = {};
   LIVE.readAt = null; LIVE.error = null; LIVE.code = null;
   render();
@@ -1875,8 +1895,9 @@ function liveControl(){
 function livePrompt(){
   const key = window.prompt(
     "Paste a monday.com API key (monday.com › Developers › My access tokens).\n\n"
-    + "It is kept for this browser tab only, is never saved into this file, and "
-    + "is sent only to api.monday.com.", liveKey());
+    + "It is remembered on this device so you only enter it once, is never saved "
+    + "into this file, and is sent only to api.monday.com. Clear it any time with "
+    + "\"Forget key\".", liveKey());
   if (key && key.trim()) liveConnect(key.trim());
 }
 
@@ -2885,6 +2906,15 @@ function render(){
 })();
 
 render();
+
+/* A remembered key reconnects on open, so the live view is simply on rather
+   than something to re-arm each visit. Runs after the first paint: the
+   snapshot is on screen immediately and the live read upgrades it, or fails
+   into the same explained state as a manual attempt. */
+(function(){
+  const key = liveKey();
+  if (key) liveConnect(key);
+})();
 
 </script>
 
