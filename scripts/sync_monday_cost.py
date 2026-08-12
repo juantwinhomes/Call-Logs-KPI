@@ -1,14 +1,26 @@
 #!/usr/bin/env python3
-"""Refresh the MONDAY_COST block in dashboard.html from the live monday.com board.
+"""Refresh the board-sourced figures in dashboard.html from the live monday.com board.
 
 The dashboard shows two cost figures side by side for each mail format: what the
 monday.com board carries, and what Red Stone actually invoiced. The board half
 used to be transcribed by hand, which is how it drifted. This script reads it
 straight off the board instead.
 
-It rewrites only the region between the BEGIN/END GENERATED MONDAY_COST markers.
-Everything else in dashboard.html is hand-maintained and never touched -- piece
-counts, invoiced costs, labels and copy all stay exactly as they are.
+Two things get synced, and nothing else:
+
+  MONDAY_COST   rewritten wholesale between its BEGIN/END markers.
+  mail + status on each REDSTONE_JOBS entry, matched by job id.
+
+A job's Mail Date decides which month its cost lands in, so a blank one hides
+real spend: job 291483 sat outside every mailed total until someone filled in
+its date on the board. status is derived, not read -- an item sitting in the
+Mailed / Delivered group is mailed by definition, so there is no status column
+to disagree with.
+
+Deliberately NOT synced: qty and cost on REDSTONE_JOBS. cost there is the total
+on the job's Red Stone invoice, which is a different number from the board's
+Total Cost and the whole point of showing both. Piece counts are hand-maintained
+too. The script asserts it left both untouched before it writes.
 
 Usage:
     MONDAY_API_KEY=... python3 scripts/sync_monday_cost.py [--check] [--board ID]
@@ -40,6 +52,7 @@ DEFAULT_BOARD = 18392647066
 GROUP_MATCH = "mailed"
 COL_JOB_ID = "redstone job id"
 COL_COST = "total cost"
+COL_MAIL = "mail date"
 
 BEGIN = "/* BEGIN GENERATED MONDAY_COST */"
 END = "/* END GENERATED MONDAY_COST */"
@@ -79,7 +92,14 @@ def query(gql: str, token: str) -> dict:
 
 
 def pick(titles: dict[str, str], want: str, what: str) -> str:
-    """Resolve one column id from its title. Ambiguity is an error, not a guess."""
+    """Resolve one column id from its title. Ambiguity is an error, not a guess.
+
+    Exact title wins outright, so "Mail Date" is not confused with "Next Mail
+    Date" -- picking the wrong one there would silently file every job's cost
+    into the month after the one it was mailed in."""
+    exact = [cid for cid, title in titles.items() if title.strip().lower() == want]
+    if len(exact) == 1:
+        return exact[0]
     hits = [cid for cid, title in titles.items() if want in title.lower()]
     if not hits:
         raise SyncError(
@@ -98,7 +118,7 @@ def as_money(raw: str) -> float:
     return round(float(cleaned), 2)
 
 
-def fetch(board: int, token: str) -> dict[str, float]:
+def fetch(board: int, token: str) -> dict[str, dict]:
     meta = query(
         f"{{ boards(ids:[{board}]) {{ name groups {{ id title }} "
         f"columns {{ id title }} }} }}", token
@@ -118,12 +138,13 @@ def fetch(board: int, token: str) -> dict[str, float]:
     titles = {c["id"]: c["title"] for c in board_meta["columns"]}
     col_job = pick(titles, COL_JOB_ID, "job id column")
     col_cost = pick(titles, COL_COST, "cost column")
+    col_mail = pick(titles, COL_MAIL, "mail date column")
 
     print(f"board   : {board_meta['name']} ({board})")
     print(f"group   : {group['title']}")
-    print(f"columns : {titles[col_job]!r} -> {col_job}, {titles[col_cost]!r} -> {col_cost}")
+    print(f"columns : {titles[col_job]!r}, {titles[col_cost]!r}, {titles[col_mail]!r}")
 
-    costs: dict[str, float] = {}
+    rows: dict[str, dict] = {}
     cursor = None
     while True:
         page = (f'items_page(limit:100, cursor:"{cursor}")' if cursor
@@ -140,19 +161,73 @@ def fetch(board: int, token: str) -> dict[str, float]:
             if not job:
                 print(f"  skipped (no job id): {item['name']}", file=sys.stderr)
                 continue
-            if job in costs:
+            if job in rows:
                 raise SyncError(f"job {job} appears on two items; board needs a fix")
             try:
-                costs[job] = as_money(cells.get(col_cost, ""))
+                cost = as_money(cells.get(col_cost, ""))
             except SyncError as exc:
                 raise SyncError(f"job {job} ({item['name']}): {exc}") from exc
+            mail = (cells.get(col_mail) or "").strip()
+            if mail and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", mail):
+                raise SyncError(f"job {job}: unexpected Mail Date {mail!r}")
+            rows[job] = {"cost": cost, "mail": mail or None}
         cursor = block.get("cursor")
         if not cursor:
             break
 
-    if not costs:
+    if not rows:
         raise SyncError("group produced no costed items")
-    return costs
+    return rows
+
+
+JOB_LINE = re.compile(r'^(\s*\{name:"[^"]*",\s*job:"(\d+)".*)$', re.M)
+
+
+def repad(field: str, old: str, new: str, gap: str) -> str:
+    """Swap a field's value while keeping the columns after it lined up.
+
+    REDSTONE_JOBS is written as an aligned table by hand. A shorter value would
+    drag every following field left, so the run of spaces after the comma
+    absorbs the difference."""
+    width = len(old) + len(gap)          # value + comma + trailing spaces
+    return f"{field}{new}," + " " * max(1, width - len(new) - 1)
+
+
+def sync_jobs(text: str, rows: dict[str, dict]) -> tuple[str, list[str]]:
+    """Update mail and status on each REDSTONE_JOBS entry the board knows about.
+
+    Everything else on the line -- name, fmt, upload, qty, cost -- is left
+    exactly as written."""
+    notes: list[str] = []
+
+    def one(m: re.Match) -> str:
+        line, job = m.group(1), m.group(2)
+        row = rows.get(job)
+        if row is None:
+            return line
+        out = line
+
+        want_mail = f'"{row["mail"]}"' if row["mail"] else "null"
+        mm = re.search(r'(mail:)(null|"[\d-]{10}")(,\s*)', out)
+        if mm and mm.group(2) != want_mail:
+            notes.append(f"  {job} mail    {mm.group(2):<12} -> {want_mail}")
+            out = out[:mm.start()] + repad(mm.group(1), mm.group(2), want_mail, mm.group(3)) + out[mm.end():]
+
+        # In the Mailed / Delivered group, so mailed by definition.
+        sm = re.search(r'(status:")([^"]*)(",\s*)', out)
+        if sm and sm.group(2) != "Done":
+            notes.append(f'  {job} status  {sm.group(2):<12} -> Done')
+            out = (out[:sm.start()]
+                   + repad(sm.group(1), sm.group(2) + '"', 'Done"', sm.group(3))
+                   + out[sm.end():])
+        return out
+
+    return JOB_LINE.sub(one, text), notes
+
+
+def field_snapshot(text: str) -> list[tuple[str, str, str]]:
+    """(job, qty, cost) for every job line -- the fields this script must not move."""
+    return re.findall(r'job:"(\d+)".*?qty:(\d+),\s*cost:([\d.]+)', text)
 
 
 def render(costs: dict[str, float]) -> str:
@@ -189,10 +264,12 @@ def main() -> int:
     text = TARGET.read_text()
     try:
         before = existing(text)
-        costs = fetch(args.board, token)
+        rows = fetch(args.board, token)
     except SyncError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
+    costs = {job: row["cost"] for job, row in rows.items()}
+    staged, job_notes = sync_jobs(text, rows)
 
     added = sorted(set(costs) - set(before))
     removed = sorted(set(before) - set(costs))
@@ -207,7 +284,12 @@ def main() -> int:
     for job in removed:
         print(f"  removed {job}  (was {before[job]:,.2f})")
 
-    if not (added or removed or changed):
+    if job_notes:
+        print("\nmail date / status on REDSTONE_JOBS:")
+        for note in job_notes:
+            print(note)
+
+    if not (added or removed or changed or job_notes):
         print("  board and dashboard agree; nothing to write")
         return 0
 
@@ -218,8 +300,15 @@ def main() -> int:
     updated = re.sub(
         re.escape(BEGIN) + r".*?" + re.escape(END),
         BEGIN + "\n" + render(costs) + "\n" + END,
-        text, count=1, flags=re.S,
+        staged, count=1, flags=re.S,
     )
+
+    # Refuse to write if the edit moved a piece count or an invoiced cost.
+    if field_snapshot(updated) != field_snapshot(text):
+        print("error: refusing to write - qty/cost changed, which this script "
+              "must never do", file=sys.stderr)
+        return 3
+
     TARGET.write_text(updated)
     print(f"\nwrote {TARGET.relative_to(REPO)}")
     return 0
