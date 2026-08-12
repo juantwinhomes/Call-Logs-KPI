@@ -1195,7 +1195,7 @@ const MAIL_CARD_SETS = [
   {leaf:"Direct Mail - Postcard", heading:"Direct Mail — Postcard", cards:[
     {key:"mailed",            title:"Postcards Mailed",                       fmt:"int",  dir:"flat"},
     {key:"spend",             title:"Postcard Mail Cost",                     fmt:"usd0", dir:"flat"},
-    {key:"costPerPiece",      title:"Cost Per Postcard",                      fmt:"usd2", dir:"down"},
+    {key:"costPerPiece",      title:"Cost Per Postcard — Monday.com / KPI",   fmt:"usd2", dir:"down"},
     {key:"ratePerMailRedstone",title:"Cost Per Postcard — Red Stone billed",  fmt:"usd2", dir:"down"},
     {key:"spendMonday",       title:"Monday.com / KPI Cost — Postcard",       fmt:"usd0", dir:"flat"},
     {key:"spendRedstone",     title:"Redstone Cost — Postcard",               fmt:"usd0", dir:"flat"},
@@ -1206,7 +1206,7 @@ const MAIL_CARD_SETS = [
   {leaf:"Direct Mail - Check", heading:"Direct Mail — Check", cards:[
     {key:"mailed",            title:"Checks Mailed",                          fmt:"int",  dir:"flat"},
     {key:"spend",             title:"Check Mail Cost",                        fmt:"usd0", dir:"flat"},
-    {key:"costPerPiece",      title:"Cost Per Check",                         fmt:"usd2", dir:"down"},
+    {key:"costPerPiece",      title:"Cost Per Check — Monday.com / KPI",      fmt:"usd2", dir:"down"},
     {key:"inbound",           title:"Total Inbound Callers From Checks",      fmt:"int",  dir:"up"},
     {key:"inboundPerK",       title:"Inbound Calls Per 1,000 Checks",         fmt:"dec2", dir:"up"},
     {key:"costPerInboundCall",title:"Cost Per Inbound Check Call",            fmt:"usd2", dir:"down"}
@@ -1214,7 +1214,7 @@ const MAIL_CARD_SETS = [
   {leaf:"Direct Mail - Letter", heading:"Direct Mail — Letter", cards:[
     {key:"mailed",            title:"Letters Mailed",                         fmt:"int",  dir:"flat"},
     {key:"spend",             title:"Letter Mail Cost",                       fmt:"usd0", dir:"flat"},
-    {key:"costPerPiece",      title:"Cost Per Letter",                        fmt:"usd2", dir:"down"},
+    {key:"costPerPiece",      title:"Cost Per Letter — Monday.com / KPI",     fmt:"usd2", dir:"down"},
     {key:"ratePerMailRedstone",title:"Cost Per Letter — Red Stone billed",    fmt:"usd2", dir:"down"},
     {key:"spendMonday",       title:"Monday.com / KPI Cost — Letter",         fmt:"usd0", dir:"flat"},
     {key:"spendRedstone",     title:"Redstone Cost — Letter",                 fmt:"usd0", dir:"flat"},
@@ -1227,14 +1227,15 @@ const MAIL_COMBINED_SETS = [
   {leaves:["Direct Mail - Check","Direct Mail - Letter"],
    heading:"Direct Mail — Checks & Letters combined", cards:[
     {key:"piecesCosted",       title:"Checks & Letters Mailed",                  fmt:"int",  dir:"flat"},
-    {key:"costPerPieceCosted", title:"Cost Per Mail (Checks & Letters combined)", fmt:"usd2", dir:"down"},
+    {key:"costPerPieceCosted", title:"Cost Per Mail, Checks & Letters — Monday.com / KPI", fmt:"usd2", dir:"down"},
+    {key:"ratePerMailRedstone",title:"Cost Per Mail, Checks & Letters — Red Stone billed",  fmt:"usd2", dir:"down"},
     {key:"inbound",      title:"Total Inbound Callers From Checks & Letters", fmt:"int",  dir:"up"}
   ]},
   {leaves:["Direct Mail - Postcard","Direct Mail - Check","Direct Mail - Letter"],
    heading:"Direct Mail — all formats", cards:[
     {key:"piecesCosted",       title:"Total Pieces Mailed (All Direct Mail)",  fmt:"int",  dir:"flat"},
-    {key:"costPerPieceCosted", title:"Cost Per Mail (All Direct Mail)",        fmt:"usd2", dir:"down"},
-    {key:"ratePerMailRedstone",title:"Cost Per Mail — Red Stone billed",       fmt:"usd2", dir:"down"},
+    {key:"costPerPieceCosted", title:"Cost Per Mail, All Direct Mail — Monday.com / KPI", fmt:"usd2", dir:"down"},
+    {key:"ratePerMailRedstone",title:"Cost Per Mail, All Direct Mail — Red Stone billed",  fmt:"usd2", dir:"down"},
     {key:"spendMonday",  title:"Monday.com / KPI Cost — All Direct Mail",     fmt:"usd0", dir:"flat"},
     {key:"spendRedstone",title:"Redstone Cost — All Direct Mail",             fmt:"usd0", dir:"flat"},
     {key:"inbound",      title:"Total Inbound Callers From Direct Mail",      fmt:"int",  dir:"up"}
@@ -2131,7 +2132,11 @@ function mailSection(cur, prevR){
         leafCosted(g.leaf) ? "" : "no piece count or cost on the Red Stone board for this format");
   }
   return `<div class="sec"><h2>Mail performance by format</h2>
-      <p>Piece counts and cost from the Red Stone board. Call counts from the call logs.</p></div>` +
+      <p>Piece counts and cost from the Red Stone board. Call counts from the call logs.
+         Cost per mail is each job's own rate averaged, the way the board's Cost per Mail
+         column works. The Monday.com / KPI figure divides by the quantity uploaded; the
+         Red Stone one divides by the quantity actually billed, which is lower once
+         suppression has run — so it reads slightly higher.</p></div>` +
     MAIL_CARD_SETS.map(g => render(g.heading, g.leaf, g.cards,
       leafCosted(g.leaf) ? "" : "no piece count or cost on the Red Stone board for this format")).join("") +
     MAIL_COMBINED_SETS.map(g => {
