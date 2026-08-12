@@ -934,7 +934,7 @@ function aggregate(range, master, leaf){
 
 /* Metrics that exist in the sheets, and the ones that do not. */
 const CALL_KPIS = [
-  {key:"calls",        title:"Total Calls",           fmt:"int",  dir:"up"},
+  {key:"calls",        title:"Total Calls (Outbound + Inbound)", fmt:"int", dir:"up"},
   {key:"inbound",      title:"Inbound Calls",         fmt:"int",  dir:"up"},
   {key:"outbound",     title:"Outbound Calls",        fmt:"int",  dir:"up"},
   {key:"missed",       title:"Missed Calls",          fmt:"int",  dir:"down"},
