@@ -365,15 +365,22 @@ const REDSTONE_JOBS = [
   {name:"THB_Postcard_Relaunch_12",          job:"291195", fmt:"Postcard", status:"Done",     upload:"2026-07-30", mail:"2026-08-04", qty:3171, cost:1672.15},
   {name:"THB_Postcard_Relaunch_13",          job:"291483", fmt:"Postcard", status:"Uploaded", upload:"2026-08-03", mail:null,         qty:3515, cost:1947.49}
 ];
-/* Total Cost per job as the monday.com "Red Stone Upload" board carries it
-   (group "Mailed / Delivered", read 12 August 2026). cost above is the
-   total on the job's Red Stone invoice. The two disagree on job 290763. */
+/* Total Cost per job as the monday.com "Red Stone Upload" board carries it.
+   cost on each job above is the total on that job's Red Stone invoice; the
+   two disagree wherever someone edited the board away from what was billed.
+
+   The block below is GENERATED - run scripts/sync_monday_cost.py to refresh
+   it from the live board. Do not hand-edit between the markers: the next
+   sync overwrites them. Everything outside the markers is hand-maintained
+   and the generator never touches it. */
+/* BEGIN GENERATED MONDAY_COST */
 const MONDAY_COST = {
-  "281322": 609.31, "281822": 920.73, "282621": 600.52, "282914":1015.72,
-  "283693":1334.60, "284126":3906.76, "284128": 327.83, "285043":4111.19,
-  "285989":1769.39, "285990":2807.90, "287106":1599.55, "287141":4274.54,
-  "289244":1376.02, "290763":2485.82, "291195":1672.15, "291483":1947.49
+  "281322":  609.31, "281822":  920.73, "282621":  600.52, "282914": 1015.72,
+  "283693": 1334.60, "284126": 3906.76, "284128":  327.83, "285043": 4111.19,
+  "285989": 1769.39, "285990": 2807.90, "287106": 1599.55, "287141": 4274.54,
+  "289244": 1376.02, "290763": 2485.82, "291195": 1672.15, "291483": 1947.49
 };
+/* END GENERATED MONDAY_COST */
 const MAILED_JOBS   = REDSTONE_JOBS.filter(j => j.status === "Done");
 const IN_PRODUCTION = REDSTONE_JOBS.filter(j => j.status !== "Done");
 const POSTCARD_JOBS = MAILED_JOBS.filter(j => j.fmt === "Postcard");
