@@ -695,6 +695,53 @@ const DATA = (() => {
    Call Log's coverage note cannot drift away from the payload. */
 const ADDR_FILLED = DATA.records.reduce((n,r) => n + (r.address ? 1 : 0), 0);
 
+/* ---- Addresses carried across calls to the same number ----------------------
+   The Address column is filled on 573 records, but the same property is often
+   called several times and only one of those rows records where it is. Where a
+   phone number has exactly one address anywhere in the year, that address is
+   carried to the number's other calls, which fills 501 more records without
+   inventing anything.
+
+   A number with two or more different addresses against it is left alone: 257
+   records fall there, and picking one would be a guess. Matched addresses are
+   kept in their own field and labelled wherever they appear, so what the sheet
+   actually wrote is never confused with what was inferred from it. */
+const ADDR_BY_PHONE = (() => {
+  const seen = new Map();
+  DATA.records.forEach(r => {
+    if (!r.address) return;
+    if (!seen.has(r.phoneId)) seen.set(r.phoneId, new Set());
+    seen.get(r.phoneId).add(r.address);
+  });
+  const one = new Map();
+  seen.forEach((set, id) => { if (set.size === 1) one.set(id, [...set][0]); });
+  return one;
+})();
+let ADDR_MATCHED = 0, ADDR_AMBIGUOUS = 0;
+(() => {
+  const many = new Map();
+  DATA.records.forEach(r => {
+    if (!r.address) return;
+    if (!many.has(r.phoneId)) many.set(r.phoneId, new Set());
+    many.get(r.phoneId).add(r.address);
+  });
+  DATA.records.forEach(r => {
+    if (r.address) return;
+    const hit = ADDR_BY_PHONE.get(r.phoneId);
+    if (hit){
+      r.addressMatched = hit;
+      r.city = cityOf(hit); r.zip = zipOf(hit); r.geoState = stateOf(hit);
+      ADDR_MATCHED++;
+    } else if (many.has(r.phoneId)){
+      ADDR_AMBIGUOUS++;
+    }
+  });
+})();
+/* The address to use for counting and display: what the sheet wrote, else what
+   the number matched. Empty when neither exists. */
+const placeOf = (r) => r.address || r.addressMatched || "";
+const ADDR_PLACED = DATA.records.reduce((n,r) => n + (placeOf(r) ? 1 : 0), 0);
+
 function resolved(r){
   const ov = OVERRIDES.get(r.id);
   if (ov) return {master:MASTER_OF[ov] || null, leaf:ov, manual:true, review:false};
@@ -2352,7 +2399,7 @@ function logRecords(base){
         || (r.campaign|| "").toLowerCase().includes(q)
         || (r.disposition || "").toLowerCase().includes(q)
         || (r.agent   || "").toLowerCase().includes(q)
-        || (r.address || "").toLowerCase().includes(q);
+        || (placeOf(r) || "").toLowerCase().includes(q);
   });
 }
 
@@ -2439,7 +2486,9 @@ function pageCalls(){
   ${breakdown("Agent", byAgent, recs.length || 1)}
 
   ${(() => {
-    const withAddr = recs.filter(r => r.address);
+    const withAddr = recs.filter(r => placeOf(r));
+    const written = recs.filter(r => r.address).length;
+    const matched = withAddr.length - written;
     if (!withAddr.length) return `<div class="sec"><h2>By property location</h2>
       <p>None of these ${recs.length.toLocaleString("en-US")} records carries an address, so there
          is nothing to place. The sheets' Address column only starts being filled in March.</p></div>`;
@@ -2474,8 +2523,10 @@ function pageCalls(){
     return `<div class="sec"><h2>By property location</h2>
       <p>Parsed from the sheets' own Address column, for the
          ${withAddr.length.toLocaleString("en-US")} of ${recs.length.toLocaleString("en-US")}
-         records in this selection that carry one${
-         recs.length ? ` (${(withAddr.length/recs.length*100).toFixed(1)}%)` : ""}. Cities are shown in
+         records in this selection that have one${
+         recs.length ? ` (${(withAddr.length/recs.length*100).toFixed(1)}%)` : ""} \u2014 ${
+         written.toLocaleString("en-US")} written on the row itself${matched ? ` and ${
+         matched.toLocaleString("en-US")} carried from another call to the same number` : ""}. Cities are shown in
          whichever spelling the sheets use most often; a genuine misspelling still stands on
          its own rather than being quietly absorbed.${
          noCity ? ` ${noCity} of these addresses contain no city` : ""}${
@@ -2497,11 +2548,15 @@ function pageCalls(){
 
   <div class="sec"><h2>Records</h2>
     <p>Page ${state.logPage} of ${pages}, newest first. Lead Source is the sheet's own column,
-       kept for reference; CRM Source is derived from the campaign. Property Address is the
-       sheets' own Address column — filled on ${ADDR_FILLED.toLocaleString("en-US")} of the
-       ${DATA.records.length.toLocaleString("en-US")} records for the year
-       (${(ADDR_FILLED/DATA.records.length*100).toFixed(1)}%), so a dash means the sheet
-       left it empty, not that the property is unknown.</p></div>
+       kept for reference; CRM Source is derived from the campaign. Property Address comes from the
+       sheets' own Address column, filled on ${ADDR_FILLED.toLocaleString("en-US")} of the
+       ${DATA.records.length.toLocaleString("en-US")} records for the year. Where a phone
+       number has exactly one address anywhere in the logs, it is carried to that number's
+       other calls and tagged <span class="pill mono">same number</span>, which places
+       ${ADDR_PLACED.toLocaleString("en-US")} records in total
+       (${(ADDR_PLACED/DATA.records.length*100).toFixed(1)}%). ${ADDR_AMBIGUOUS.toLocaleString("en-US")}
+       more are left blank on purpose, because their number appears against more than one
+       property and choosing between them would be a guess.</p></div>
   <div class="t-scroll"><table>
     <thead><tr><th class="l">Date</th><th class="l">Contact Name</th><th class="l">Phone</th>
       <th class="l">Property Address</th>
@@ -2515,7 +2570,11 @@ function pageCalls(){
         <td class="l">${r.contact ? esc(r.contact) : `<span style="color:var(--ink-3)">—</span>`}</td>
         <td class="l mono-sm">${r.phone ? esc(r.phone) : `<span style="color:var(--ink-3)">—</span>`}</td>
         <td class="l" style="font-size:12.5px;min-width:195px">${r.address
-          ? esc(r.address) : `<span style="color:var(--ink-3)">—</span>`}</td>
+          ? esc(r.address)
+          : r.addressMatched
+            ? `<span style="color:var(--ink-2)">${esc(r.addressMatched)}</span>
+               <span class="pill mono" title="not written on this row — carried from another call to the same number">same number</span>`
+            : `<span style="color:var(--ink-3)">—</span>`}</td>
         <td class="l" style="font-size:12.5px">${esc(r.campaign || "—")}</td>
         <td class="l">${res.leaf ? esc(res.leaf) : `<span class="pill warn">${esc(NEEDS_REVIEW)}</span>`}${
           res.manual ? ' <span class="pill mono">manual</span>' : ""}</td>
@@ -2542,7 +2601,8 @@ function exportCallLog(){
   const cols = [["Date", r => iso(r.date)],
                 ["Contact Name", r => r.contact],
                 ["Phone", r => r.phone],
-                ["Property Address", r => r.address],
+                ["Property Address", r => placeOf(r)],
+                ["Address Source", r => r.address ? "sheet" : r.addressMatched ? "matched on phone number" : ""],
                 ["Campaign", r => r.campaign],
                 ["CRM Source", r => resolved(r).leaf || NEEDS_REVIEW],
                 ["Sheet Lead Source", r => r.sheetSource],
