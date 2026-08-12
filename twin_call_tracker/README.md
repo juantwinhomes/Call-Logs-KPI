@@ -103,10 +103,11 @@ build.
 1. Copy the whole `TwinCallTracker` folder from the download (or from `dist\`
    if you built it yourself) to the computer, for
    example to `C:\Apps\TwinCallTracker`. The `.exe` needs the files beside it.
-2. Put `client_secrets.json` in `%LOCALAPPDATA%\TwinCallTracker\`
-   (see [Google setup](#google-setup)). Create the folder if it does not exist.
-3. Make a Start Menu or desktop shortcut to `TwinCallTracker.exe`.
-4. Launch it and connect the two accounts.
+2. Make a Start Menu or desktop shortcut to `TwinCallTracker.exe`.
+3. Launch it and connect the two accounts. The first time you press **Connect
+   Google Sheets** it asks for the `client_secrets.json` download and files it
+   away itself — see [Google setup](#google-setup) for where that file comes
+   from.
 
 No Python, Command Prompt or PowerShell is needed to run it.
 
@@ -137,10 +138,21 @@ needs about ten minutes.
    - Application type: **Desktop app**
    - Name: `TwinCallTracker desktop`
    - **Create**, then **Download JSON**.
-5. Rename the downloaded file to `client_secrets.json` and place it in
-   `%LOCALAPPDATA%\TwinCallTracker\` on each machine that will run the app.
-   A read-only network share works too — point `GOOGLE_CLIENT_SECRETS_FILE` at it
-   in a `.env` file beside the `.exe`.
+5. Give the downloaded file to the app. Press **Connect Google Sheets**, choose
+   **Choose file…**, and pick the download — usually still in `Downloads`, under
+   its long original name. The app checks it is the right kind of credential,
+   renames it to `client_secrets.json` and files it into
+   `%LOCALAPPDATA%\TwinCallTracker\` for you, then goes straight on to sign-in.
+
+   If it is the wrong download the app says which one you picked — a service
+   account key and a saved sign-in from another tool both look similar and
+   neither works — so you can go back for the right one.
+
+   You can still place the file by hand if you prefer, or serve one file to
+   every machine from a read-only network share by pointing
+   `GOOGLE_CLIENT_SECRETS_FILE` at it in a `.env` beside the `.exe`. Note that
+   this environment variable takes priority over the file the app saves, and the
+   app warns you if both are in play.
 
 The About screen inside the app shows the exact folder, and has a button to open
 it.
@@ -304,7 +316,7 @@ Everything writable lives under `%LOCALAPPDATA%\TwinCallTracker\`:
 | `credentials.enc` | the encrypted tokens |
 | `keyfile.bin` | only if the OS credential store is unavailable — see below |
 | `logs\app.log` | the technical log, rotated at 2 MB, five kept |
-| `client_secrets.json` | the Google OAuth client you placed there |
+| `client_secrets.json` | the Google OAuth client, placed here by **Connect Google Sheets** or by hand |
 
 The About screen lists these paths and can open the folder.
 
@@ -514,8 +526,16 @@ Share the spreadsheet with the connected account as an **Editor**.
 **"The Google Sheets API is not enabled for this project."**
 Step 2 of [Google setup](#google-setup).
 
-**"Google Sheets is not set up on this installation yet."**
-`client_secrets.json` is missing. The About screen shows where it belongs.
+**"Google Sheets needs its credential file before it can sign in."**
+`client_secrets.json` has not been installed yet. Choose **Choose file…** in that
+prompt and pick the download from the Google Cloud console — step 5 of
+[Google setup](#google-setup).
+
+**"That file cannot be used."**
+The file you picked is not an OAuth client for a desktop application. The message
+names what it actually was; a service account key and a saved sign-in from another
+tool are the two easiest to grab by mistake. Go back to
+**Credentials → Create credentials → OAuth client ID → Desktop app**.
 
 **"That Monday.com board no longer exists, or this account cannot see it."**
 The board was deleted or renamed, or the token belongs to someone without access.

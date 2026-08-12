@@ -1,16 +1,20 @@
 """The main window: header, connections, refresh, results and bottom navigation."""
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import Signal
-from PySide6.QtGui import QCloseEvent
-from PySide6.QtWidgets import (QButtonGroup, QGridLayout, QHBoxLayout, QInputDialog, QLabel,
-                               QLineEdit, QMainWindow, QMessageBox, QProgressBar, QPushButton,
-                               QScrollArea, QSizePolicy, QStackedWidget, QVBoxLayout, QWidget)
+from PySide6.QtCore import QUrl, Signal
+from PySide6.QtGui import QCloseEvent, QDesktopServices
+from PySide6.QtWidgets import (QButtonGroup, QFileDialog, QGridLayout, QHBoxLayout, QInputDialog,
+                               QLabel, QLineEdit, QMainWindow, QMessageBox, QProgressBar,
+                               QPushButton, QScrollArea, QSizePolicy, QStackedWidget, QVBoxLayout,
+                               QWidget)
 
 from database.models import (Checkpoint, SettingsStore, SyncConfig, SyncRunRepo, to_local_display)
 from services.auth_service import AuthService, ConnStatus
+from services.errors import AppError
+from services.google_setup import CONSOLE_CREDENTIALS_URL, install_client_secrets
 from services.sync_service import SyncPlan, SyncResult, SyncService
 from ui.about import AboutPage
 from ui.logs_view import LogsPage
@@ -420,16 +424,61 @@ class MainWindow(QMainWindow):
                        "Monday.com is connected.")
 
     def _connect_google(self) -> None:
-        if not self.auth.google.oauth_available:
-            QMessageBox.warning(
-                self, "Google setup needed",
-                "Google Sheets is not set up on this installation yet.\n\n"
-                "A client_secrets.json file from the Google Cloud console must be placed in the "
-                "application data folder. The README section 'Google setup' has the steps, and "
-                "the About screen shows the exact folder.")
+        if not self.auth.google.oauth_available and not self._offer_google_setup():
             return
         self.row_google.set_busy(True, "Waiting for the browser...")
         self._run_task(self.auth.google.begin_oauth, "Google Sheets is connected.")
+
+    def _offer_google_setup(self) -> bool:
+        """Ask for the credential file. True once it is in place and sign-in can start."""
+        box = QMessageBox(self)
+        box.setWindowTitle("Google setup needed")
+        box.setIcon(QMessageBox.Icon.Warning)
+        box.setText("Google Sheets needs its credential file before it can sign in.")
+        box.setInformativeText(
+            "Already downloaded client_secrets.json from the Google Cloud console? Choose the "
+            "file - usually in your Downloads folder - and it will be filed away for you. It does "
+            "not need renaming or moving first.\n\n"
+            "Do not have it yet? Open the console, then Create credentials, OAuth client ID, "
+            "Desktop app, and use Download JSON.")
+        choose = box.addButton("Choose file...", QMessageBox.ButtonRole.AcceptRole)
+        console = box.addButton("Open the console", QMessageBox.ButtonRole.ActionRole)
+        box.addButton(QMessageBox.StandardButton.Cancel)
+        box.setDefaultButton(choose)
+        box.exec()
+
+        clicked = box.clickedButton()
+        if clicked is console:
+            QDesktopServices.openUrl(QUrl(CONSOLE_CREDENTIALS_URL))
+            return False
+        if clicked is not choose:
+            return False
+        return self._install_google_secrets()
+
+    def _install_google_secrets(self) -> bool:
+        downloads = Path.home() / "Downloads"
+        start = downloads if downloads.is_dir() else Path.home()
+        chosen, _ = QFileDialog.getOpenFileName(
+            self, "Choose the Google credential file", str(start),
+            "Google credential file (*.json);;All files (*)")
+        if not chosen:
+            return False
+        try:
+            installed = install_client_secrets(Path(chosen))
+        except AppError as exc:
+            log.warning("client_secrets install rejected: %s", exc.detail)
+            QMessageBox.critical(self, "That file cannot be used", exc.message)
+            return False
+        except Exception as exc:                                   # never a stack trace on screen
+            log.exception("client_secrets install failed")
+            QMessageBox.critical(self, "That file cannot be used",
+                                 f"The file could not be saved ({type(exc).__name__}).")
+            return False
+
+        if installed.warning:
+            QMessageBox.warning(self, "Saved, with one thing to check", installed.warning)
+        self.refresh_connection_status()
+        return True
 
     def _test_monday(self) -> None:
         from services.monday_service import MondayService

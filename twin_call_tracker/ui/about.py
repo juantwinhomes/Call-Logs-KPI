@@ -85,8 +85,9 @@ class AboutPage(QWidget):
         btn_open.clicked.connect(self._open_data)
         files.add(btn_open)
         note = QLabel(
-            "The Google client_secrets.json file belongs in the application data folder. "
-            "Credentials are encrypted with a key held in the Windows Credential Manager.")
+            "The Google client_secrets.json file belongs in the application data folder, though "
+            "Connect Google Sheets can put it there for you. Credentials are encrypted with a key "
+            "held in the Windows Credential Manager.")
         note.setObjectName("Hint")
         note.setWordWrap(True)
         files.add(note)

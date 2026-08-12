@@ -401,3 +401,155 @@ def test_a_task_is_not_lost_to_garbage_collection(app, pump):
     gc.collect()                       # the worker is unreferenced by the caller
     assert pump(lambda: bool(done)), "the task was collected before it ran"
     assert done == ["finished"]
+
+
+# --------------------------------------------------------------------------- #
+# Filing away the Google credential file from the connection screen
+# --------------------------------------------------------------------------- #
+
+DESKTOP_CLIENT_JSON = (
+    '{"installed": {"client_id": "8134-abc.apps.googleusercontent.com",'
+    ' "client_secret": "GOCSPX-fake", "redirect_uris": ["http://localhost"]}}')
+
+
+@pytest.fixture
+def picked(monkeypatch):
+    """Stand in for the file dialog, and record the message boxes shown."""
+    from PySide6.QtWidgets import QFileDialog, QMessageBox
+    from services.google_setup import installed_path
+
+    shown: dict[str, list[str]] = {"critical": [], "warning": []}
+    chosen = {"path": ""}
+
+    monkeypatch.setattr(QFileDialog, "getOpenFileName",
+                        staticmethod(lambda *a, **k: (chosen["path"], "")))
+    monkeypatch.setattr(QMessageBox, "critical",
+                        staticmethod(lambda parent, title, text, *a, **k:
+                                     shown["critical"].append(text)))
+    monkeypatch.setattr(QMessageBox, "warning",
+                        staticmethod(lambda parent, title, text, *a, **k:
+                                     shown["warning"].append(text)))
+
+    def choose(path) -> None:
+        chosen["path"] = str(path)
+
+    yield type("Picked", (), {"choose": staticmethod(choose), "shown": shown,
+                              "target": staticmethod(installed_path)})
+    installed_path().unlink(missing_ok=True)
+
+
+def test_choosing_a_downloaded_credential_files_it_away(make_window, picked, tmp_path):
+    window = make_window(FakeAuth(google_oauth_available=False))
+    download = tmp_path / "client_secret_8134-abc.apps.googleusercontent.com.json"
+    download.write_text(DESKTOP_CLIENT_JSON, encoding="utf-8")
+    picked.choose(download)
+
+    assert window._install_google_secrets() is True
+    assert picked.target().is_file()
+    assert picked.shown["critical"] == []
+    assert picked.shown["warning"] == []
+
+
+def test_the_wrong_file_is_refused_with_a_readable_reason(make_window, picked, tmp_path):
+    window = make_window(FakeAuth(google_oauth_available=False))
+    wrong = tmp_path / "key.json"
+    wrong.write_text('{"type": "service_account", "private_key": "x"}', encoding="utf-8")
+    picked.choose(wrong)
+
+    assert window._install_google_secrets() is False
+    assert not picked.target().exists()
+    assert len(picked.shown["critical"]) == 1
+    assert "service account key" in picked.shown["critical"][0]
+    assert "Traceback" not in picked.shown["critical"][0]
+
+
+def test_closing_the_file_dialog_changes_nothing(make_window, picked):
+    window = make_window(FakeAuth(google_oauth_available=False))
+    picked.choose("")
+
+    assert window._install_google_secrets() is False
+    assert not picked.target().exists()
+    assert picked.shown["critical"] == []
+
+
+def test_a_web_client_is_saved_but_the_user_is_told(make_window, picked, tmp_path):
+    window = make_window(FakeAuth(google_oauth_available=False))
+    web = tmp_path / "web.json"
+    web.write_text('{"web": {"client_id": "8134-web.apps.googleusercontent.com"}}',
+                   encoding="utf-8")
+    picked.choose(web)
+
+    assert window._install_google_secrets() is True
+    assert picked.target().is_file()
+    assert len(picked.shown["warning"]) == 1
+    assert "Desktop app" in picked.shown["warning"][0]
+
+
+def test_sign_in_starts_once_the_credential_is_in_place(app, make_window, monkeypatch):
+    window = make_window(FakeAuth(google_oauth_available=False))
+    started: list[str] = []
+    monkeypatch.setattr(window, "_run_task",
+                        lambda fn, text="", **k: started.append(text))
+    monkeypatch.setattr(window, "_offer_google_setup", lambda: True)
+
+    window._connect_google()
+
+    assert started == ["Google Sheets is connected."]
+
+
+def test_sign_in_is_not_attempted_when_the_setup_is_declined(app, make_window, monkeypatch):
+    window = make_window(FakeAuth(google_oauth_available=False))
+    started: list[str] = []
+    monkeypatch.setattr(window, "_run_task",
+                        lambda fn, text="", **k: started.append(text))
+    monkeypatch.setattr(window, "_offer_google_setup", lambda: False)
+
+    window._connect_google()
+
+    assert started == []
+
+
+def test_a_configured_installation_goes_straight_to_sign_in(app, make_window, monkeypatch):
+    window = make_window(FakeAuth(google_oauth_available=True))
+    started: list[str] = []
+    monkeypatch.setattr(window, "_run_task",
+                        lambda fn, text="", **k: started.append(text))
+    monkeypatch.setattr(window, "_offer_google_setup",
+                        lambda: pytest.fail("should not ask when already set up"))
+
+    window._connect_google()
+
+    assert started == ["Google Sheets is connected."]
+
+
+def test_dismissing_the_setup_prompt_reports_declined(app, make_window, monkeypatch):
+    """No button clicked - QMessageBox.clickedButton() is None - must not proceed."""
+    from PySide6.QtWidgets import QMessageBox
+
+    window = make_window(FakeAuth(google_oauth_available=False))
+    monkeypatch.setattr(QMessageBox, "exec", lambda self: 0)
+
+    assert window._offer_google_setup() is False
+
+
+def test_the_console_button_opens_the_credentials_page(app, make_window, monkeypatch):
+    from PySide6.QtGui import QDesktopServices
+    from PySide6.QtWidgets import QMessageBox
+
+    window = make_window(FakeAuth(google_oauth_available=False))
+    opened: list[str] = []
+    monkeypatch.setattr(QDesktopServices, "openUrl",
+                        staticmethod(lambda url: opened.append(url.toString())))
+
+    def click_the_console_button(box) -> int:
+        for button in box.buttons():
+            if "console" in button.text().lower():
+                box.setDefaultButton(button)
+                button.click()
+                break
+        return 0
+
+    monkeypatch.setattr(QMessageBox, "exec", click_the_console_button)
+
+    assert window._offer_google_setup() is False
+    assert opened == ["https://console.cloud.google.com/apis/credentials"]

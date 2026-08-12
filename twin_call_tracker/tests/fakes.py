@@ -164,9 +164,12 @@ class FakeAuth:
     """Minimal AuthService replacement: both services report Connected."""
 
     class _Side:
-        def __init__(self, ok: bool = True, state: str | None = None) -> None:
+        def __init__(self, ok: bool = True, state: str | None = None,
+                     oauth_available: bool = True) -> None:
             from services.auth_service import ConnState
             self._status = FakeConnStatus(ok, state or ConnState.CONNECTED)
+            self.oauth_available = oauth_available
+            self.oauth_calls = 0
 
         def check(self) -> Any:
             return self._status
@@ -174,10 +177,15 @@ class FakeAuth:
         def access_token(self) -> str:
             return "test-token"
 
+        def begin_oauth(self) -> str:
+            self.oauth_calls += 1
+            return "connected"
+
     def __init__(self, monday_ok: bool = True, google_ok: bool = True,
-                 monday_state: str | None = None, google_state: str | None = None) -> None:
+                 monday_state: str | None = None, google_state: str | None = None,
+                 google_oauth_available: bool = True) -> None:
         self.monday = self._Side(monday_ok, monday_state)
-        self.google = self._Side(google_ok, google_state)
+        self.google = self._Side(google_ok, google_state, google_oauth_available)
 
     def statuses(self):
         return self.monday.check(), self.google.check()

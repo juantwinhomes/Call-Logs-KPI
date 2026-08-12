@@ -111,9 +111,10 @@ def run_diagnostics(auth: Any, settings: Any) -> Report:
     if secrets_path is None:
         add(Check("Google client_secrets.json", FAIL,
                   "not found in the application data folder",
-                  f"Download the OAuth client for a Desktop app from the Google Cloud console, "
-                  f"rename it to client_secrets.json, and put it in {data_dir()}. "
-                  "Until then the Connect Google Sheets button cannot do anything."))
+                  "Download the OAuth client for a Desktop app from the Google Cloud console, "
+                  "then press Connect Google Sheets and choose the downloaded file - it will be "
+                  f"filed away for you. You can also copy it to {data_dir()} by hand, named "
+                  "client_secrets.json."))
     else:
         add(Check("Google client_secrets.json", OK, str(secrets_path)))
 
