@@ -79,6 +79,50 @@ body{margin:0;background:var(--plane);color:var(--ink);font-family:var(--sans);
 .period-line b{color:var(--ink);font-weight:600}
 .period-line .warn-inline{color:var(--warn-ink)}
 
+/* Day picker — a month calendar, so a date is chosen by looking at it */
+.daybtn{font:inherit;font-size:14px;color:var(--ink);text-align:left;background:var(--surface);
+  border:1px solid var(--rule);border-radius:8px;padding:8px 10px;width:100%;cursor:pointer;
+  display:flex;align-items:center;justify-content:space-between;gap:8px}
+.daybtn:hover{border-color:var(--axis)}
+.daybtn[aria-expanded="true"]{border-color:var(--s1);box-shadow:0 0 0 3px rgba(42,120,214,.13)}
+.daybtn .chev{color:var(--ink-3);font-size:10px;flex:none}
+.daybtn:disabled{background:var(--surface-2);color:var(--ink-3);cursor:not-allowed}
+
+.cal{margin-top:13px;padding-top:13px;border-top:1px solid var(--rule-soft)}
+.cal-head{display:flex;align-items:center;gap:9px;margin-bottom:9px;flex-wrap:wrap}
+.cal-head h4{margin:0;font-size:14px;font-weight:650;min-width:142px}
+.cal-nav{appearance:none;border:1px solid var(--rule);background:var(--surface);color:var(--ink-2);
+  border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:13px;line-height:1}
+.cal-nav:hover:not(:disabled){border-color:var(--axis);color:var(--ink)}
+.cal-nav:disabled{opacity:.38;cursor:not-allowed}
+.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;max-width:640px}
+.cal-dow{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink-3);text-align:center;padding-bottom:1px}
+.cal-cell{appearance:none;font:inherit;border:1px solid var(--rule);background:var(--surface);
+  border-radius:8px;padding:6px 4px 5px;cursor:pointer;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:1px;min-height:52px}
+.cal-cell:hover:not(:disabled){border-color:var(--s1);background:var(--surface-2)}
+.cal-cell .d{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink)}
+.cal-cell .n{font-size:11px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.cal-cell.quiet{border-style:dashed;background:transparent}
+.cal-cell.quiet .d{color:var(--ink-3);font-weight:500}
+.cal-cell.future{opacity:.42;cursor:not-allowed}
+.cal-cell.today{box-shadow:inset 0 0 0 2px var(--warn)}
+.cal-cell[aria-pressed="true"]{background:var(--navy-800);border-color:var(--navy-800)}
+.cal-cell[aria-pressed="true"] .d,.cal-cell[aria-pressed="true"] .n{color:#fff}
+.cal-blank{min-height:52px}
+.cal-foot{display:flex;align-items:center;gap:16px;margin-top:10px;flex-wrap:wrap;
+  font-size:12px;color:var(--ink-3)}
+.cal-foot .key{display:inline-flex;align-items:center;gap:6px}
+.cal-foot .swatch{width:11px;height:11px;border-radius:3px;border:1px solid var(--rule);flex:none}
+.cal-foot .swatch.sel{background:var(--navy-800);border-color:var(--navy-800)}
+.cal-foot .swatch.now{box-shadow:inset 0 0 0 2px var(--warn)}
+.cal-foot .swatch.quiet{border-style:dashed;background:transparent}
+@media (max-width:560px){
+  .cal-cell,.cal-blank{min-height:44px}
+  .cal-cell .n{display:none}
+}
+
 .sec{margin:26px 0 12px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
 .sec h2{margin:0;font-size:15px;font-weight:700;letter-spacing:.01em}
 .sec p{margin:0;font-size:13px;color:var(--ink-3)}
@@ -590,7 +634,7 @@ const MONTHS = (() => {
 
 const state = {
   master: ALL_MASTERS, leaf: ALL_LEAF,
-  month: "All Months", day: ALL_DAYS, compare: "Previous Month",
+  month: "All Months", day: ALL_DAYS, calOpen: false, compare: "Previous Month",
   customFrom:"2026-07-01", customTo:"2026-07-31",
   page:"dashboard",
   srcSort:{col:"calls", dir:-1}, srcQuery:"", srcView:"master",
@@ -1376,6 +1420,84 @@ function monthTitle(){
   return `${MONTH_NAMES[m-1]} ${y}`;
 }
 
+/* -------------------------------------------------------------------------
+   The day calendar. A month grid rather than a list, so a date is picked by
+   looking at the month the way it is looked at on a wall - and each cell
+   carries its call count, so which days are worth opening is visible before
+   one is chosen. Only 2026 exists in the call logs, so the arrows stop at
+   January and December rather than wandering into empty years.
+   ------------------------------------------------------------------------- */
+
+/* The most recent day that actually has calls. The logs were read on 11 August
+   and that day is empty, so a "jump to today" shortcut would land on a blank
+   report - this lands on the last day there is something to read. */
+let LATEST_DAY = null;
+function latestDayWithCalls(){
+  if (LATEST_DAY !== null) return LATEST_DAY;
+  const keys = Object.keys(dayCounts()).filter(k => dayCounts()[k] > 0).sort();
+  LATEST_DAY = keys.length ? keys[keys.length-1] : "";
+  return LATEST_DAY;
+}
+const shortDay = (key) => {
+  const d = new Date(key + "T00:00:00");
+  return `${d.getDate()} ${MONTH_NAMES[d.getMonth()].slice(0,3)}`;
+};
+
+function monthKeyShift(key, by){
+  const [y,m] = key.split("-").map(Number);
+  const t = m - 1 + by;
+  if (t < 0 || t > 11) return null;                 // outside the reported year
+  return y + "-" + String(t + 1).padStart(2,"0");
+}
+
+function calendarPanel(){
+  if (!state.calOpen || state.month === "All Months") return "";
+  const [y,m] = state.month.split("-").map(Number);
+  const lead = startOfMonth(y,m-1).getDay();
+  const days = dayOptions(), picked = selectedDay(), todayKey = dkey(TODAY);
+  const prevKey = monthKeyShift(state.month,-1), nextKey = monthKeyShift(state.month,1);
+
+  const cells = [];
+  for (let i = 0; i < lead; i++)
+    cells.push('<div class="cal-blank" aria-hidden="true"></div>');
+  days.forEach(d => {
+    const cls = ["cal-cell"];
+    if (d.future) cls.push("future");
+    else if (!d.calls) cls.push("quiet");
+    if (d.key === todayKey) cls.push("today");
+    const what = d.future ? "not yet"
+               : d.calls ? `${d.calls} call${d.calls === 1 ? "" : "s"}` : "no calls";
+    cells.push(`<button type="button" class="${cls.join(" ")}" data-day="${d.key}"
+      aria-pressed="${picked === d.key}" ${d.future ? "disabled" : ""}
+      aria-label="${esc(dayLabel(new Date(d.key + "T00:00:00")))} — ${what}"
+      title="${what}"><span class="d">${Number(d.key.slice(8,10))}</span>
+      <span class="n">${d.future ? "·" : d.calls}</span></button>`);
+  });
+
+  return `<div class="cal">
+    <div class="cal-head">
+      <button type="button" class="cal-nav" id="calPrev" aria-label="Previous month"
+        ${prevKey ? "" : "disabled"}>‹</button>
+      <button type="button" class="cal-nav" id="calNext" aria-label="Next month"
+        ${nextKey ? "" : "disabled"}>›</button>
+      <h4>${esc(monthTitle())}</h4>
+      ${latestDayWithCalls() ? `<button type="button" class="btn sm" id="calLatest"
+        title="The most recent day the call logs have anything for">Latest day (${
+          esc(shortDay(latestDayWithCalls()))})</button>` : ""}
+      <button type="button" class="btn sm" id="calAll"${picked ? "" : " disabled"}>Whole month</button>
+    </div>
+    <div class="cal-grid" role="group" aria-label="Choose a day in ${esc(monthTitle())}">
+      ${DOW.map(d => `<div class="cal-dow">${d}</div>`).join("")}
+      ${cells.join("")}
+    </div>
+    <div class="cal-foot">
+      <span class="key"><i class="swatch sel"></i>selected</span>
+      <span class="key"><i class="swatch now"></i>today</span>
+      <span class="key"><i class="swatch quiet"></i>no calls</span>
+      <span>the small number is that day's call count</span>
+    </div></div>`;
+}
+
 /* =========================================================================
    10. PAGES
    ========================================================================= */
@@ -1419,11 +1541,6 @@ function filterBar(){
           `<option value="${esc(l)}"${state.leaf===l?" selected":""}>${esc(l)}</option>`)).join("")
     : "";
   const days = dayOptions(), pickedDay = selectedDay();
-  const dayOpts = [`<option value="${ALL_DAYS}"${!pickedDay?" selected":""}>${ALL_DAYS}</option>`]
-    .concat(days.map(d =>
-      `<option value="${d.key}"${pickedDay===d.key?" selected":""}>${esc(d.label)}${
-        d.calls ? ` — ${d.calls} call${d.calls===1?"":"s"}`
-                : (d.future ? " (not yet)" : " (no calls)")}</option>`)).join("");
   const cur = currentRange(), prev = compareRange(cur);
   const modes = cur.isDay ? [PREVIOUS_DAY].concat(COMPARE_MODES) : COMPARE_MODES;
   const custom = state.compare === "Custom Period";
@@ -1444,8 +1561,13 @@ function filterBar(){
       <div class="field"><label for="fMonth">Report Month</label>
         <select id="fMonth">${monthOpts}</select></div>
       <div class="field${days.length ? "" : " disabled"}"><label for="fDay">Day</label>
-        ${days.length ? `<select id="fDay">${dayOpts}</select>`
-          : `<select id="fDay" disabled><option>choose a month first</option></select>`}</div>
+        <button type="button" class="daybtn" id="fDay" aria-expanded="${!!state.calOpen}"
+          ${days.length ? "" : "disabled"}>
+          <span>${days.length
+            ? (pickedDay ? esc(dayLabel(new Date(pickedDay + "T00:00:00"))) : ALL_DAYS)
+            : "choose a month first"}</span>
+          <span class="chev" aria-hidden="true">${state.calOpen ? "▲" : "▼"}</span>
+        </button></div>
       <div class="field"><label for="fCompare">Compare To</label>
         <select id="fCompare">${modes.map(c =>
           `<option${state.compare===c?" selected":""}>${esc(c)}</option>`).join("")}</select></div>
@@ -1463,23 +1585,50 @@ function filterBar(){
         fmt(dayCounts()[selectedDay()] || 0,"int")}</b></span>` : ""}
       ${selectedMonthPartial() ? '<span class="warn-inline">partial month — to 11 August</span>' : ""}
       ${prev && prev.note ? `<span class="warn-inline">${esc(prev.note)}</span>` : ""}
-    </div></section>`;
+    </div>
+    ${calendarPanel()}</section>`;
 }
+/* "Previous Day" only means something while one day is selected, so it is stood
+   down whenever the selection widens rather than left silently mismatched. */
+function guardCompare(){
+  if (state.compare === PREVIOUS_DAY && !selectedDay()) state.compare = "Previous Month";
+}
+function setDay(key){
+  state.day = key;
+  guardCompare();
+  state.logPage = 1;
+  render();
+}
+function goToMonth(key, keepCalendarOpen){
+  state.month = key;
+  state.day = ALL_DAYS;                     // last month's 14th means nothing here
+  if (!keepCalendarOpen && key === "All Months") state.calOpen = false;
+  guardCompare();
+  state.logPage = 1;
+  render();
+}
+
 function wireFilters(){
   const on = (id,ev,fn) => { const n = document.getElementById(id); if (n) n.addEventListener(ev,fn); };
   on("fMaster","change", e => { state.master = e.target.value; state.leaf = ALL_LEAF; state.logPage=1; render(); });
   on("fLeaf","change",   e => { state.leaf = e.target.value; state.logPage=1; render(); });
-  on("fMonth","change",  e => {
-    state.month = e.target.value;
-    state.day = ALL_DAYS;                       // last month's 14th means nothing here
-    if (state.compare === PREVIOUS_DAY) state.compare = "Previous Month";
-    state.logPage=1; render();
+  on("fMonth","change",  e => { goToMonth(e.target.value); });
+
+  /* -- the day calendar -- */
+  on("fDay","click",     () => { state.calOpen = !state.calOpen; render(); });
+  on("calPrev","click",  () => { goToMonth(monthKeyShift(state.month,-1) || state.month, true); });
+  on("calNext","click",  () => { goToMonth(monthKeyShift(state.month, 1) || state.month, true); });
+  on("calAll","click",   () => { setDay(ALL_DAYS); });
+  on("calLatest","click", () => {
+    const key = latestDayWithCalls();
+    if (!key) return;
+    state.month = key.slice(0,7);      // may be a different month than the one shown
+    setDay(key);
   });
-  on("fDay","change",    e => {
-    state.day = e.target.value;
-    // "Previous Day" only exists while a day is selected.
-    if (!selectedDay() && state.compare === PREVIOUS_DAY) state.compare = "Previous Month";
-    state.logPage=1; render();
+  const grid = document.querySelector(".cal-grid");
+  if (grid) grid.addEventListener("click", e => {
+    const cell = e.target.closest(".cal-cell[data-day]");
+    if (cell && !cell.disabled) setDay(cell.dataset.day);
   });
   on("fCompare","change",e => { state.compare = e.target.value; render(); });
   on("fFrom","change",   e => { state.customFrom = e.target.value; render(); });
