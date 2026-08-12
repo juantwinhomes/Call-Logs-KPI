@@ -79,7 +79,7 @@ body{margin:0;background:var(--plane);color:var(--ink);font-family:var(--sans);
 .period-line b{color:var(--ink);font-weight:600}
 .period-line .warn-inline{color:var(--warn-ink)}
 
-/* Day picker — a month calendar, so a date is chosen by looking at it */
+/* Day picker — a compact month calendar, the shape of a wall calendar */
 .daybtn{font:inherit;font-size:14px;color:var(--ink);text-align:left;background:var(--surface);
   border:1px solid var(--rule);border-radius:8px;padding:8px 10px;width:100%;cursor:pointer;
   display:flex;align-items:center;justify-content:space-between;gap:8px}
@@ -89,39 +89,34 @@ body{margin:0;background:var(--plane);color:var(--ink);font-family:var(--sans);
 .daybtn:disabled{background:var(--surface-2);color:var(--ink-3);cursor:not-allowed}
 
 .cal{margin-top:13px;padding-top:13px;border-top:1px solid var(--rule-soft)}
-.cal-head{display:flex;align-items:center;gap:9px;margin-bottom:9px;flex-wrap:wrap}
-.cal-head h4{margin:0;font-size:14px;font-weight:650;min-width:142px}
-.cal-nav{appearance:none;border:1px solid var(--rule);background:var(--surface);color:var(--ink-2);
-  border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:13px;line-height:1}
-.cal-nav:hover:not(:disabled){border-color:var(--axis);color:var(--ink)}
-.cal-nav:disabled{opacity:.38;cursor:not-allowed}
-.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;max-width:640px}
-.cal-dow{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
-  color:var(--ink-3);text-align:center;padding-bottom:1px}
-.cal-cell{appearance:none;font:inherit;border:1px solid var(--rule);background:var(--surface);
-  border-radius:8px;padding:6px 4px 5px;cursor:pointer;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:1px;min-height:52px}
-.cal-cell:hover:not(:disabled){border-color:var(--s1);background:var(--surface-2)}
-.cal-cell .d{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink)}
-.cal-cell .n{font-size:11px;color:var(--ink-3);font-variant-numeric:tabular-nums}
-.cal-cell.quiet{border-style:dashed;background:transparent}
-.cal-cell.quiet .d{color:var(--ink-3);font-weight:500}
-.cal-cell.future{opacity:.42;cursor:not-allowed}
-.cal-cell.today{box-shadow:inset 0 0 0 2px var(--warn)}
-.cal-cell[aria-pressed="true"]{background:var(--navy-800);border-color:var(--navy-800)}
-.cal-cell[aria-pressed="true"] .d,.cal-cell[aria-pressed="true"] .n{color:#fff}
-.cal-blank{min-height:52px}
-.cal-foot{display:flex;align-items:center;gap:16px;margin-top:10px;flex-wrap:wrap;
-  font-size:12px;color:var(--ink-3)}
-.cal-foot .key{display:inline-flex;align-items:center;gap:6px}
-.cal-foot .swatch{width:11px;height:11px;border-radius:3px;border:1px solid var(--rule);flex:none}
-.cal-foot .swatch.sel{background:var(--navy-800);border-color:var(--navy-800)}
-.cal-foot .swatch.now{box-shadow:inset 0 0 0 2px var(--warn)}
-.cal-foot .swatch.quiet{border-style:dashed;background:transparent}
-@media (max-width:560px){
-  .cal-cell,.cal-blank{min-height:44px}
-  .cal-cell .n{display:none}
-}
+.cal-box{width:266px;max-width:100%;background:var(--surface);border:1px solid var(--rule);
+  border-radius:12px;box-shadow:var(--shadow);padding:12px 12px 8px}
+.cal-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.cal-head h4{margin:0;font-size:14.5px;font-weight:650;flex:1;letter-spacing:-.01em}
+.cal-nav{appearance:none;border:0;background:transparent;color:var(--ink-2);cursor:pointer;
+  width:24px;height:24px;border-radius:6px;font-size:15px;line-height:1;padding:0}
+.cal-nav:hover:not(:disabled){background:var(--surface-2);color:var(--ink)}
+.cal-nav:disabled{opacity:.3;cursor:not-allowed}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px}
+.cal-dow{font-size:11px;font-weight:600;color:var(--ink-3);text-align:center;padding:3px 0 5px}
+.cal-cell{appearance:none;font:inherit;border:0;background:transparent;cursor:pointer;
+  width:100%;aspect-ratio:1;border-radius:50%;font-size:13px;font-variant-numeric:tabular-nums;
+  color:var(--ink);display:flex;align-items:center;justify-content:center;padding:0;
+  min-height:32px}
+.cal-cell:hover:not(:disabled){background:var(--surface-2)}
+.cal-cell.weekend{color:var(--bad-ink)}
+.cal-cell.other{color:var(--ink-3);opacity:.65}
+.cal-cell.future{color:var(--ink-3);opacity:.42;cursor:not-allowed}
+.cal-cell.today{font-weight:700;box-shadow:inset 0 0 0 1.5px var(--warn)}
+.cal-cell[aria-pressed="true"]{background:var(--s1);color:#fff;font-weight:600;box-shadow:none}
+.cal-cell[aria-pressed="true"]:hover{background:var(--navy-700)}
+.cal-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  margin-top:6px;padding-top:6px}
+.cal-link{appearance:none;border:0;background:transparent;padding:4px 2px;cursor:pointer;
+  font:inherit;font-size:13px;font-weight:600;color:var(--s1)}
+.cal-link:hover{text-decoration:underline}
+.cal-link:disabled{color:var(--ink-3);cursor:not-allowed;text-decoration:none}
+.cal-note{font-size:12px;color:var(--ink-3);margin:7px 0 0;max-width:266px}
 
 .sec{margin:26px 0 12px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
 .sec h2{margin:0;font-size:15px;font-weight:700;letter-spacing:.01em}
@@ -525,8 +520,13 @@ function clearOverrides(){ OVERRIDES.clear(); persistOverrides(); }
         Week                   a roll-up copy of the daily tabs
 
       This app counts the DAILY TABS. They are the primary per-call record:
-      5,162 calls across the 32 workbooks. The Week tab is a copy that runs
+      5,162 records across the 32 workbooks. The Week tab is a copy that runs
       short in 5 workbooks (5,095 in total against 5,162), so it is not used.
+
+      Total Calls on screen is Inbound + Outbound, so those three figures always
+      tie up: 5,156 for the year. The remaining 6 records are reported in their
+      own tiles instead of being folded into the total — 3 whose Call Direction
+      reads "Missed Call", and 3 where that column is blank.
 
       A row counts as a call when its Date cell holds a real date serial and at
       least one of Contact no. / Call Type / Call Disposition is filled in. That
@@ -833,7 +833,7 @@ function suppliedCost(range, master, leaf){
 function aggregate(range, master, leaf){
   const scope = new Set(scopeLeaves(master, leaf));
   const a = {
-    calls:0, inbound:0, outbound:0, missed:0, dirNotRecorded:0,
+    records:0, calls:0, inbound:0, outbound:0, missed:0, dirNotRecorded:0,
     firstTime:0, repeat:0, followUp:0, ctNotRecorded:0,
     review:0, manual:0,
     status:{}, disposition:{}, appt:{}, apptTotal:0, apptBooked:0,
@@ -845,7 +845,7 @@ function aggregate(range, master, leaf){
     if (!inRange(r.date, range)) return;
     const res = resolved(r);
     if (!scope.has(res.leaf || NEEDS_REVIEW)) return;
-    a.calls++;
+    a.records++;
     if (res.review) a.review++;
     if (res.manual) a.manual++;
     if (r.direction === DIR_INBOUND) a.inbound++;
@@ -862,6 +862,14 @@ function aggregate(range, master, leaf){
     if (r.disposition === "Appointment Booked (H)") a.apptBooked++;
     a.phones.add(r.phoneId);
   });
+
+  /* Total Calls is Inbound + Outbound, so the three figures always tie up on
+     screen. The remainder of the records - a Call Direction of "Missed Call",
+     or that column left blank - are reported in their own tiles rather than
+     folded into the total, so nothing is dropped: records = calls + missed +
+     dirNotRecorded, always. Across 2026 that is 5,156 calls out of 5,162
+     records: 3 missed and 3 with no direction recorded. */
+  a.calls = a.inbound + a.outbound;
 
   const c = suppliedCost(range, master, leaf);
   a.uniquePhones = a.phones.size;
@@ -1386,7 +1394,7 @@ function monthlySeries(master, leaf){
     const r = {from:startOfMonth(REPORT_YEAR,m), to:endOfMonth(REPORT_YEAR,m)};
     const a = aggregate(r, master, leaf);
     out.push({label:MONTH_NAMES[m].slice(0,3), agg:a,
-              hasData:a.calls > 0 || (a.mailed || 0) > 0});
+              hasData:a.records > 0 || (a.mailed || 0) > 0});
   }
   return out;
 }
@@ -1453,49 +1461,62 @@ function monthKeyShift(key, by){
 function calendarPanel(){
   if (!state.calOpen || state.month === "All Months") return "";
   const [y,m] = state.month.split("-").map(Number);
-  const lead = startOfMonth(y,m-1).getDay();
+  const first = startOfMonth(y,m-1), lead = first.getDay();
   const days = dayOptions(), picked = selectedDay(), todayKey = dkey(TODAY);
   const prevKey = monthKeyShift(state.month,-1), nextKey = monthKeyShift(state.month,1);
 
+  /* A cell from the month either side, shown so the weeks read as whole rows.
+     Clicking one moves to that month, the way a date picker is expected to
+     behave - unless it falls outside 2026, which the call logs do not cover. */
+  const spill = (d, key) => {
+    const reachable = key && d <= TODAY;
+    return `<button type="button" class="cal-cell other${
+      d.getDay()===0||d.getDay()===6 ? " weekend" : ""}"
+      ${reachable ? `data-goto="${dkey(d)}"` : "disabled"}
+      aria-label="${esc(dayLabel(d))}${reachable ? "" : " — outside the call logs"}"
+      >${d.getDate()}</button>`;
+  };
+
   const cells = [];
-  for (let i = 0; i < lead; i++)
-    cells.push('<div class="cal-blank" aria-hidden="true"></div>');
+  for (let i = lead; i > 0; i--) cells.push(spill(addDays(first,-i), prevKey));
   days.forEach(d => {
+    const dt = new Date(d.key + "T00:00:00");
     const cls = ["cal-cell"];
+    if (dt.getDay() === 0 || dt.getDay() === 6) cls.push("weekend");
     if (d.future) cls.push("future");
-    else if (!d.calls) cls.push("quiet");
     if (d.key === todayKey) cls.push("today");
     const what = d.future ? "not yet"
                : d.calls ? `${d.calls} call${d.calls === 1 ? "" : "s"}` : "no calls";
     cells.push(`<button type="button" class="${cls.join(" ")}" data-day="${d.key}"
       aria-pressed="${picked === d.key}" ${d.future ? "disabled" : ""}
-      aria-label="${esc(dayLabel(new Date(d.key + "T00:00:00")))} — ${what}"
-      title="${what}"><span class="d">${Number(d.key.slice(8,10))}</span>
-      <span class="n">${d.future ? "·" : d.calls}</span></button>`);
+      aria-label="${esc(dayLabel(dt))} — ${what}" title="${what}"
+      >${dt.getDate()}</button>`);
   });
+  const tail = (7 - (cells.length % 7)) % 7;
+  const lastDay = endOfMonth(y,m-1);
+  for (let i = 1; i <= tail; i++) cells.push(spill(addDays(lastDay,i), nextKey));
 
-  return `<div class="cal">
+  return `<div class="cal"><div class="cal-box">
     <div class="cal-head">
-      <button type="button" class="cal-nav" id="calPrev" aria-label="Previous month"
-        ${prevKey ? "" : "disabled"}>‹</button>
-      <button type="button" class="cal-nav" id="calNext" aria-label="Next month"
-        ${nextKey ? "" : "disabled"}>›</button>
       <h4>${esc(monthTitle())}</h4>
-      ${latestDayWithCalls() ? `<button type="button" class="btn sm" id="calLatest"
-        title="The most recent day the call logs have anything for">Latest day (${
-          esc(shortDay(latestDayWithCalls()))})</button>` : ""}
-      <button type="button" class="btn sm" id="calAll"${picked ? "" : " disabled"}>Whole month</button>
+      <button type="button" class="cal-nav" id="calPrev" aria-label="Previous month"
+        ${prevKey ? "" : "disabled"}>&lsaquo;</button>
+      <button type="button" class="cal-nav" id="calNext" aria-label="Next month"
+        ${nextKey ? "" : "disabled"}>&rsaquo;</button>
     </div>
     <div class="cal-grid" role="group" aria-label="Choose a day in ${esc(monthTitle())}">
-      ${DOW.map(d => `<div class="cal-dow">${d}</div>`).join("")}
+      ${["S","M","T","W","T","F","S"].map((d,i) =>
+        `<div class="cal-dow" aria-hidden="true">${d}</div>`).join("")}
       ${cells.join("")}
     </div>
     <div class="cal-foot">
-      <span class="key"><i class="swatch sel"></i>selected</span>
-      <span class="key"><i class="swatch now"></i>today</span>
-      <span class="key"><i class="swatch quiet"></i>no calls</span>
-      <span>the small number is that day's call count</span>
-    </div></div>`;
+      <button type="button" class="cal-link" id="calToday">Today</button>
+      <button type="button" class="cal-link" id="calAll"${picked ? "" : " disabled"}
+        >Whole month</button>
+    </div></div>
+    <p class="cal-note">Hover a date for its call count. ${
+      latestDayWithCalls() ? `The last day with calls is ${
+        esc(shortDay(latestDayWithCalls()))}.` : ""}</p></div>`;
 }
 
 /* =========================================================================
@@ -1619,16 +1640,19 @@ function wireFilters(){
   on("calPrev","click",  () => { goToMonth(monthKeyShift(state.month,-1) || state.month, true); });
   on("calNext","click",  () => { goToMonth(monthKeyShift(state.month, 1) || state.month, true); });
   on("calAll","click",   () => { setDay(ALL_DAYS); });
-  on("calLatest","click", () => {
-    const key = latestDayWithCalls();
-    if (!key) return;
-    state.month = key.slice(0,7);      // may be a different month than the one shown
-    setDay(key);
+  on("calToday","click", () => {
+    state.month = mKey(TODAY);
+    setDay(dkey(TODAY));
   });
   const grid = document.querySelector(".cal-grid");
   if (grid) grid.addEventListener("click", e => {
-    const cell = e.target.closest(".cal-cell[data-day]");
-    if (cell && !cell.disabled) setDay(cell.dataset.day);
+    const cell = e.target.closest(".cal-cell");
+    if (!cell || cell.disabled) return;
+    if (cell.dataset.day) { setDay(cell.dataset.day); return; }
+    if (cell.dataset.goto){                       // a date from the neighbouring month
+      state.month = cell.dataset.goto.slice(0,7);
+      setDay(cell.dataset.goto);
+    }
   });
   on("fCompare","change",e => { state.compare = e.target.value; render(); });
   on("fFrom","change",   e => { state.customFrom = e.target.value; render(); });
@@ -1833,18 +1857,22 @@ function pageDashboard(){
   const cur = currentRange(), prevR = compareRange(cur);
   const A = aggregate(cur, state.master, state.leaf);
   const B = prevR ? aggregate(prevR, state.master, state.leaf) : null;
-  const empty = A.calls === 0;
+  const empty = A.records === 0;
 
   return `${filterBar()}
   ${empty ? notice("warn","No call records fall inside " + esc(cur.label) +
       " for this selection.") : ""}
   ${A.review ? notice("warn", `<p><b>${A.review.toLocaleString("en-US")} of ${
-     A.calls.toLocaleString("en-US")} records in this selection are not classified</b> — their
+     A.records.toLocaleString("en-US")} records in this selection are not classified</b> — their
      campaign could not settle a Standard CRM Source. They are counted in the totals so the
      record count stays true, and listed on the Classification page.</p>`, true) : ""}
 
-  <div class="sec"><h2>${esc(kpiHeading())}</h2><p>${esc(kpiSub())}</p></div>
-  <div class="kpi-grid hero">${CALL_KPIS.map(d => kpiCard(d,A,B)).join("")}</div>
+  <div class="sec"><h2>${esc(kpiHeading())}</h2><p>${esc(kpiSub())} Total Calls is Inbound +
+    Outbound${A.records !== A.calls ? `, so ${fmt(A.records - A.calls,"int")} of ${
+      fmt(A.records,"int")} records sit outside it — shown separately below` : ""}.</p></div>
+  <div class="kpi-grid hero">${CALL_KPIS.map(d => kpiCard(d,A,B)).join("")}
+    ${A.dirNotRecorded ? statTile("Direction Not Recorded", fmt(A.dirNotRecorded,"int"),
+      "Call Direction blank — outside Total Calls, which is Inbound + Outbound") : ""}</div>
 
   <div class="sec"><h2>Caller type</h2>
     <p>Recorded per call in the sheets' own Caller Type column.</p></div>
