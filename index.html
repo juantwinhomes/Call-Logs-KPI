@@ -371,7 +371,7 @@ const REDSTONE_JOBS = [
   {name:"THB_Postcard_Relaunch_10",          job:"289244", fmt:"Postcard", status:"Done",     upload:"2026-07-13", mail:"2026-07-17", qty:2843, cost:1376.02},
   {name:"THB_Postcard_Relaunch_11",          job:"290763", fmt:"Postcard", status:"Done",     upload:"2026-07-28", mail:"2026-08-01", qty:4583, cost:2214.38},
   {name:"THB_Postcard_Relaunch_12",          job:"291195", fmt:"Postcard", status:"Done",     upload:"2026-07-30", mail:"2026-08-04", qty:3171, cost:1672.15},
-  {name:"THB_Postcard_Relaunch_13",          job:"291483", fmt:"Postcard", status:"Uploaded", upload:"2026-08-03", mail:null,         qty:3515, cost:1947.49}
+  {name:"THB_Postcard_Relaunch_13",          job:"291483", fmt:"Postcard", status:"Done",     upload:"2026-08-03", mail:"2026-08-11", qty:3515, cost:1947.49}
 ];
 const MAILED_JOBS   = REDSTONE_JOBS.filter(j => j.status === "Done");
 const IN_PRODUCTION = REDSTONE_JOBS.filter(j => j.status !== "Done");
@@ -2193,9 +2193,10 @@ function mailSection(cur, prevR){
     return gap + `<div class="sec"><h2>Mail performance</h2>
         <p>Piece counts and cost from the Red Stone board. Call counts from the call logs.</p></div>` +
       render(g.heading, g.leaf, g.cards,
-        leafCosted(g.leaf) ? "" : "no piece count or cost on the Red Stone board for this format");
+        leafCosted(g.leaf) ? "" : "no piece count or cost on the Red Stone board for this format")
+      + postcardResponseSection(cur);
   }
-  return gap + `<div class="sec"><h2>Mail performance by format</h2>
+  return gap + postcardResponseSection(cur) + `<div class="sec"><h2>Mail performance by format</h2>
       <p>Piece counts and cost from the Red Stone board. Call counts from the call logs.</p></div>` +
     MAIL_CARD_SETS.map(g => render(g.heading, g.leaf, g.cards,
       leafCosted(g.leaf) ? "" : "no piece count or cost on the Red Stone board for this format")).join("") +
@@ -2204,6 +2205,173 @@ function mailSection(cur, prevR){
       return render(g.heading, g.leaves, g.cards, missing.length
         ? "withheld — " + missing.join(" and ") + (missing.length===1?" has":" have") + " no mail data" : "");
     }).join("");
+}
+
+/* ---- Postcard response time -------------------------------------------------
+   The management question in full: when did a batch go out, and how long before
+   the phone rang. Two readings are shown together because they disagree, and the
+   disagreement is the point.
+
+   Per mailing (the table): every first-time postcard caller is attributed to the
+   most recent postcard mailing that went out on or before their first call. No
+   caller address is needed, so all of them count, not only the few whose address
+   could be matched to a piece.
+
+   That attribution has a known bias and the note says so. Postcards go out about
+   weekly, so crediting the newest batch mechanically caps the lag at the gap
+   between batches. 20 of the 72 attributed callers land on day 0 - ringing the
+   same day the batch was mailed, which cannot happen - so those were answering an
+   earlier postcard and the method credited the wrong one. Read the per-mailing
+   lag as a floor.
+
+   The matched figure beside it is the honest one: 9 callers whose own address was
+   found in a mailed list, so the piece that reached them is known. Median 7 days,
+   out to 32. */
+function postcardResponse(){
+  const jobs = POSTCARD_JOBS.filter(j => j.mail).slice()
+    .sort((a,b) => a.mail < b.mail ? -1 : 1);
+  if (!jobs.length) return null;
+  /* One entry per phone number: its first inbound call, postcard-attributed, and
+     flagged First Time Caller by the sheets. */
+  const firsts = new Map();
+  DATA.records.forEach(r => {
+    if (r.direction !== DIR_INBOUND) return;
+    if (resolved(r).leaf !== "Direct Mail - Postcard") return;
+    const prev = firsts.get(r.phoneId);
+    if (!prev || r.date < prev.date) firsts.set(r.phoneId, r);
+  });
+  /* Batches are grouped by mail date, because two went out on 25 June and two on
+     7 July - a caller cannot be assigned to one of a same-day pair on any evidence,
+     so the date is the unit and their piece counts add. */
+  const dates = [];
+  jobs.forEach(j => {
+    const d = dates.find(x => x.mail === j.mail);
+    if (d){ d.qty += j.qty; d.names.push(j.name); }
+    else dates.push({mail:j.mail, qty:j.qty, names:[j.name], lags:[]});
+  });
+  const lags = [];
+  firsts.forEach(r => {
+    if (r.callerType !== "First Time Caller") return;
+    const key = dkey(r.date);
+    let hit = null;
+    dates.forEach(d => { if (d.mail <= key) hit = d; });
+    if (!hit) return;
+    const n = Math.round((r.date - new Date(hit.mail + "T00:00:00")) / dayMs);
+    lags.push(n); hit.lags.push(n);
+  });
+  return {dates, lags, sameDay: lags.filter(d => d === 0).length};
+}
+const median = (a) => {
+  if (!a.length) return null;
+  const s = a.slice().sort((x,y) => x-y), m = s.length >> 1;
+  return s.length % 2 ? s[m] : (s[m-1] + s[m]) / 2;
+};
+function postcardResponseSection(cur){
+  if (state.master !== "Direct Mail") return "";
+  if (!scopeLeaves(state.master, state.leaf).includes("Direct Mail - Postcard")) return "";
+  const R = postcardResponse();
+  if (!R) return "";
+  const shown = R.dates.filter(j => {
+    const d = new Date(j.mail + "T00:00:00");
+    return d >= cur.from && d <= cur.to;
+  });
+  const rows = (shown.length ? shown : R.dates).slice().reverse();
+  const inWindow = rows.flatMap(j => j.lags);
+  /* Which campaign the calls are actually coming in on, for the period and source
+     in view. Counted by canonical campaign name so one campaign typed several
+     ways is one row. */
+  const camp = {};
+  DATA.records.forEach(r => {
+    if (!inRange(r.date, cur)) return;
+    if (!scopeLeaves(state.master, state.leaf).includes(resolved(r).leaf || NEEDS_REVIEW)) return;
+    const k = campaignOf(r) || "(no campaign named)";
+    const c = camp[k] || (camp[k] = {calls:0, inbound:0, firstTime:0, phones:new Set()});
+    if (r.direction === DIR_INBOUND || r.direction === DIR_OUTBOUND) c.calls++;
+    if (r.direction === DIR_INBOUND){
+      c.inbound++;
+      if (r.callerType === "First Time Caller") c.firstTime++;
+    }
+    c.phones.add(r.phoneId);
+  });
+  const campRows = Object.entries(camp).sort((a,b) => b[1].calls - a[1].calls);
+  const campTotal = campRows.reduce((s,[,v]) => s + v.calls, 0);
+  const curve = {};
+  R.lags.forEach(d => { const k = d >= 15 ? "15+" : String(d); curve[k] = (curve[k]||0)+1; });
+  const peak = Math.max(1, ...Object.values(curve));
+  const order = [...Array(15).keys()].map(String).concat("15+");
+  const m = PCFC.map(x => x.days);
+  return `<div class="sec" style="margin:20px 0 8px"><h2>Postcard response time</h2>
+      <p>When each batch went out, and how long before a first-time caller rang.
+         ${shown.length ? `${shown.length} batch${shown.length===1?"":"es"} mailed in ${esc(cur.label)}.`
+                        : `No batch was mailed in ${esc(cur.label)}, so every batch is listed.`}</p></div>
+    ${notice("warn", `<p><b>Read the per-mailing lag as a floor, not the answer.</b> Each caller is
+      credited to the most recent batch mailed before their call, and batches go out about weekly,
+      which caps the lag at the gap between them. ${R.sameDay} of the ${R.lags.length} callers come out
+      at day 0 &mdash; ringing the day the batch was mailed, which cannot happen &mdash; so those were
+      answering an earlier postcard. The matched figure below is the one to trust.</p>`)}
+    <div class="panel-grid">
+      <section class="card">
+        <div class="chart-head"><h3>By mailing</h3>
+          <span class="unit">${inWindow.length} first-time callers</span></div>
+        <div class="t-scroll" style="border:0"><table>
+          <thead><tr><th class="l">Mailed</th><th class="l">Batch</th><th>Pieces</th>
+            <th>First-time callers</th><th>Median lag</th></tr></thead>
+          <tbody>${rows.map(j => {
+            const md = median(j.lags);
+            return `<tr>
+              <td class="l mono-sm">${esc(j.mail)}</td>
+              <td class="l" style="font-size:12.5px">${j.names.map(n =>
+                esc(n.replace("THB_Postcard_",""))).join(" + ")}</td>
+              <td>${j.qty.toLocaleString("en-US")}</td>
+              <td>${j.lags.length || `<span style="color:var(--ink-3)">${DASH}</span>`}</td>
+              <td>${md === null ? `<span style="color:var(--ink-3)">${DASH}</span>`
+                                : fmt(md, "days1")}</td></tr>`;
+          }).join("")}</tbody></table></div></section>
+      <section class="card">
+        <div class="chart-head"><h3>Days from mailing to call</h3>
+          <span class="unit">all ${R.lags.length} attributed callers</span></div>
+        <div class="t-scroll" style="border:0"><table><tbody>
+          ${order.filter(k => curve[k]).map(k => `<tr>
+            <td class="l" style="width:22%">${k === "15+" ? "15+ days" : (k === "1" ? "1 day" : k + " days")}</td>
+            <td style="width:14%">${curve[k]}</td>
+            <td style="width:64%"><div class="fbar-track" style="height:14px">
+              <div class="fbar" style="height:14px;width:${(curve[k]/peak*100).toFixed(1)}%;background:${
+                k === "0" ? "var(--bad)" : "var(--s1)"}"></div></div></td></tr>`).join("")}
+        </tbody></table></div>
+        <p class="chart-note" style="margin:10px 0 0">The day-0 bar is drawn in red because a
+          postcard cannot be mailed, delivered and answered on the same day &mdash; those
+          ${R.sameDay} callers were responding to an earlier batch.</p></section>
+    </div>
+    <div class="kpi-grid" style="margin-top:12px">
+      ${statTile("Matched To Their Own Postcard", String(m.length),
+        "address found in a mailed list, so the piece is known")}
+      ${statTile("Median Days, Matched", m.length ? fmt(median(m), "days1") : DASH,
+        m.length ? `spread ${Math.min(...m)}\u2013${Math.max(...m)} days` : "")}
+      ${statTile("Average Days, Matched", m.length ? fmt(m.reduce((a,b)=>a+b,0)/m.length, "days1") : DASH,
+        "the figure the KPI card reports")}
+      ${statTile("Median Days, Attributed", fmt(median(R.lags), "days1"),
+        `across ${R.lags.length} callers \u2014 a floor, see above`)}
+    </div>
+    <div class="sec" style="margin:20px 0 8px"><h2>Which campaign the calls are on</h2>
+      <p>Every call in ${esc(cur.label)} for this source, by the campaign the sheets name,
+         commonest first. ${campTotal.toLocaleString("en-US")} calls across
+         ${campRows.length} campaign${campRows.length===1?"":"s"}. Inbound and first-time
+         columns are the ones that answer whether a campaign is bringing new people in.
+         First-time inbound counts inbound calls only, so it can sit one or two below the
+         dashboard's First Time Callers tile, which counts the flag on outbound rows too.</p></div>
+    <section class="card"><div class="t-scroll" style="border:0"><table>
+      <thead><tr><th class="l">Campaign</th><th>Calls</th><th>Inbound</th>
+        <th>First-time inbound</th><th>Unique numbers</th><th class="l">Share of calls</th></tr></thead>
+      <tbody>${campRows.map(([k,v]) => `<tr>
+        <td class="l" style="font-size:12.5px">${esc(k)}</td>
+        <td>${v.calls.toLocaleString("en-US")}</td>
+        <td>${v.inbound.toLocaleString("en-US")}</td>
+        <td>${v.firstTime.toLocaleString("en-US")}</td>
+        <td>${v.phones.size.toLocaleString("en-US")}</td>
+        <td class="l" style="width:26%"><div class="fbar-track" style="height:14px">
+          <div class="fbar" style="height:14px;width:${
+            (v.calls / (campRows[0][1].calls || 1) * 100).toFixed(1)}%;background:var(--s1)"></div>
+          </div></td></tr>`).join("")}</tbody></table></div></section>`;
 }
 
 /* Direct-mail pipeline, straight off the monday.com board. */
