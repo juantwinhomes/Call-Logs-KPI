@@ -421,9 +421,13 @@ class GoogleAuth:
                     port=port, open_browser=True, timeout_seconds=300,
                     authorization_prompt_message="",
                     success_message="Connected. You can close this tab and return to the app.",
-                    # Ask for offline access so a refresh token comes back, and force the
-                    # consent screen so a re-connect always yields a fresh refresh token.
-                    access_type="offline", prompt="consent")
+                    # offline: so a refresh token comes back.
+                    # consent: so a re-connect always yields a fresh refresh token.
+                    # select_account: so Google always asks which account to use. Without
+                    #   it Google silently reuses whichever account the default browser is
+                    #   already signed into, which makes connecting a second account -
+                    #   another client, another mailbox - look impossible.
+                    access_type="offline", prompt="consent select_account")
                 break
             except OSError as exc:
                 last = exc
@@ -440,10 +444,36 @@ class GoogleAuth:
                 "in again constantly. Please remove this app under your Google Account's "
                 "third-party access and connect once more.",
                 "no refresh_token in credentials", service="Google")
-        self._save(creds)
+        # keep_account=False: this may be a different account from last time, and a
+        # stale label is worse than none - check() falls back to a generic one.
+        self._save(creds, keep_account=False)
+        self._remember_account()
         return self.check()
 
-    def _save(self, creds: Any) -> None:
+    def _remember_account(self) -> None:
+        """Record which Google account was just connected. Best effort.
+
+        Anyone juggling more than one account needs to see which one is attached.
+        The spreadsheets scope carries no profile information, but Drive's
+        about.get names the signed-in user and is covered by the
+        drive.metadata.readonly scope the app already asks for, so this costs no
+        extra permission. A failure here must never fail a sign-in that has
+        already succeeded.
+        """
+        try:
+            from services.google_drive_service import GoogleDriveService
+            email = GoogleDriveService(self).signed_in_account()
+        except Exception as exc:
+            log.info("Could not read the connected Google account name: %s", type(exc).__name__)
+            return
+        if not email:
+            return
+        data = self.stored() or {}
+        data["account"] = email
+        self.store.put(GOOGLE_KEY, data)
+        log.info("Google connected as %s", email)
+
+    def _save(self, creds: Any, *, keep_account: bool = True) -> None:
         record = {
             "token": creds.token,
             "refresh_token": creds.refresh_token,
@@ -455,7 +485,7 @@ class GoogleAuth:
         if getattr(creds, "expiry", None):
             record["expiry"] = creds.expiry.replace(tzinfo=timezone.utc).isoformat()
         existing = self.stored() or {}
-        if existing.get("account"):
+        if keep_account and existing.get("account"):
             record["account"] = existing["account"]
         self.store.put(GOOGLE_KEY, record)
 

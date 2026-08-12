@@ -46,9 +46,12 @@ class FakeDriveApi:
     the Drive query language the service actually sends.
     """
 
-    def __init__(self, items: list[dict], drives: list[dict] | None = None) -> None:
+    def __init__(self, items: list[dict], drives: list[dict] | None = None,
+                 about: dict | None = None) -> None:
         self.items = items
         self.drives_list = drives or []
+        self.about_payload = about if about is not None else {
+            "user": {"emailAddress": "tester@example.com", "displayName": "Tester"}}
         self.queries: list[str] = []
 
     # -- the shape googleapiclient exposes ---------------------------------- #
@@ -57,6 +60,9 @@ class FakeDriveApi:
 
     def drives(self):
         return _DrivesEndpoint(self)
+
+    def about(self):
+        return _AboutEndpoint(self)
 
     def list(self, **kw):
         self.queries.append(kw.get("q", ""))
@@ -104,6 +110,15 @@ class _DrivesEndpoint:
 
     def list(self, **_kw):
         return _Request({"drives": list(self.api.drives_list)})
+
+
+class _AboutEndpoint:
+    def __init__(self, api: FakeDriveApi) -> None:
+        self.api = api
+
+    def get(self, **kw):
+        self.api.queries.append("about:" + str(kw.get("fields", "")))
+        return _Request(dict(self.api.about_payload))
 
 
 class _Request:
@@ -488,3 +503,36 @@ def test_the_verdict_reflects_the_worst_finding():
     broken = run_diagnostics(_DiagAuth(monday_state=ConnState.NOT_CONNECTED),
                              _settings_with_config(False))
     assert "stopping the app" in broken.verdict
+
+
+# --------------------------------------------------------------------------- #
+# Naming the connected account
+# --------------------------------------------------------------------------- #
+
+def test_the_signed_in_account_is_read_from_about():
+    svc = drive_with([])
+
+    assert svc.signed_in_account() == "tester@example.com"
+    assert any(q.startswith("about:") for q in svc._svc.queries)
+
+
+def test_the_display_name_is_used_when_there_is_no_email():
+    svc = GoogleDriveService(FakeGoogleAuth())
+    svc._svc = FakeDriveApi([], about={"user": {"displayName": "Front Desk"}})
+
+    assert svc.signed_in_account() == "Front Desk"
+
+
+def test_an_empty_about_response_gives_no_account():
+    svc = GoogleDriveService(FakeGoogleAuth())
+    svc._svc = FakeDriveApi([], about={})
+
+    assert svc.signed_in_account() == ""
+
+
+def test_naming_the_account_needs_the_metadata_scope():
+    from services.errors import AuthError
+    svc = GoogleDriveService(FakeGoogleAuth([GOOGLE_SCOPE_SHEETS]))
+
+    with pytest.raises(AuthError):
+        svc.signed_in_account()

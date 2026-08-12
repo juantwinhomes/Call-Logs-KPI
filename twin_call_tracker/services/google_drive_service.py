@@ -128,6 +128,19 @@ class GoogleDriveService:
         self._svc = None
         self._name_cache.clear()
 
+    def signed_in_account(self) -> str:
+        """The email address of the connected Google account, or "".
+
+        Used to label the connection so someone switching between accounts can
+        see which one is attached. about.get is covered by the metadata scope, so
+        naming the account needs no extra permission.
+        """
+        self._require_scope()
+        raw = self._call(self._service().about().get(fields="user(emailAddress,displayName)"),
+                         "about") or {}
+        user = raw.get("user") or {}
+        return str(user.get("emailAddress") or user.get("displayName") or "")
+
     def _call(self, request: Any, what: str) -> Any:
         from googleapiclient.errors import HttpError
 
