@@ -420,9 +420,21 @@ They are listed on the Data Sync page.
    their call. Batches go out roughly weekly, so the longest lag it could ever report
    was 17 days, and a homeowner who rang two months after their postcard was booked as a
    few days after somebody else's. It is now measured only on callers whose own piece is
-   known — matched on address + ZIP, on street, or on their name in the mailed list —
-   which gives 13 homeowners, a **20.1-day average, a 14-day median and a spread of 3 to
-   62 days**. Four of the 13 rang more than a month after their postcard.
+   known — matched on address + ZIP, on street, on the property address written into the
+   agent's call summary, or on their name in the mailed list — which gives 14 homeowners,
+   a **20.5-day average, a 17-day median and a spread of 3 to 62 days**. Four of the 14
+   rang more than a month after their postcard.
+24. **The `Summary` column holds what the structured columns are missing.** Agents write
+   the property and the caller into the prose — *"Spoke with Sean regarding 2988 Orchid
+   Street, Fairfield, CA 94533"* — so it is mined as a third source after `Address` and
+   the CRM lead. Bob Mendez was found that way, 26 days after his postcard, with nothing
+   but a phone number in the columns. A **name** taken from the prose is only used where
+   the caller has none of their own: otherwise it finds whoever else the agent mentioned,
+   which put Chris Paratore against a piece posted to Luther Martin.
+25. **The mailed lists carry no owner telephone number.** Across all 32 tabs the only
+   columns are First, Last, Owner, Full Name, address, city, state, ZIP and `profit_dial`,
+   so a caller's number cannot be matched against them. Name and address are the only keys
+   the data allows.
 
 ### On the monday.com direct-mail board
 
