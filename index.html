@@ -110,6 +110,16 @@ body{margin:0;background:var(--plane);color:var(--ink);font-family:var(--sans);
 .cal-cell.today{font-weight:700;box-shadow:inset 0 0 0 1.5px var(--warn)}
 .cal-cell[aria-pressed="true"]{background:var(--s1);color:#fff;font-weight:600;box-shadow:none}
 .cal-cell[aria-pressed="true"]:hover{background:var(--navy-700)}
+/* A span reads as one band: the days between keep square edges so they run
+   together, and only the two ends are rounded. .preview is the same band drawn
+   faintly while the second click is still pending. */
+.cal-cell.in-span{background:var(--s1);color:#fff;font-weight:600;box-shadow:none;
+  border-radius:0}
+.cal-cell.in-span.other{opacity:1;color:#fff}
+.cal-cell.in-span:hover:not(:disabled){background:var(--navy-700)}
+.cal-cell.span-end{border-radius:50%}
+.cal-cell.preview:not(.in-span){background:var(--surface-2);border-radius:0}
+.cal-cell.preview:not(.in-span).other{opacity:.8}
 .cal-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;
   margin-top:6px;padding-top:6px}
 .cal-link{appearance:none;border:0;background:transparent;padding:4px 2px;cursor:pointer;
@@ -333,6 +343,10 @@ const COMPARE_MODES = ["Previous Month","Previous 30 Days","Previous 60 Days",
                        "Previous 90 Days","Same Month Last Year","Custom Period"];
 /* Offered only while a single day is selected, where it is the useful comparison. */
 const PREVIOUS_DAY = "Previous Day";
+/* Offered only while a span of days is selected: the equally long stretch ending
+   the day before it, which is the like-for-like reading of "is this week up on
+   last week" that a month comparison cannot give. */
+const PREVIOUS_PERIOD = "Previous Period";
 const ALL_DAYS = "All Days";
 const REPORT_YEAR = 2026;
 const TODAY = new Date(2026, 7, 12);
@@ -650,7 +664,8 @@ const MONTHS = (() => {
 
 const state = {
   master: ALL_MASTERS, leaf: ALL_LEAF,
-  month: "All Months", day: ALL_DAYS, calOpen: false, compare: "Previous Month",
+  month: "All Months", day: ALL_DAYS, dayTo: null, awaitEnd: false,
+  calOpen: false, compare: "Previous Month",
   customFrom:"2026-07-01", customTo:"2026-07-31",
   page:"dashboard",
   srcSort:{col:"calls", dir:-1}, srcQuery:"", srcView:"master",
@@ -704,9 +719,34 @@ function dayOptions(){
 }
 
 /* A day only stands while its own month is selected. */
-function selectedDay(){
+/* The day selection is a span. state.day is the anchor and state.dayTo the far
+   end, null while a single day is chosen, so one click still behaves exactly as
+   it did. Both are absolute keys rather than offsets into the shown month, so a
+   span may run across a month boundary and still mean the same days when the
+   calendar is paged to either side of it. */
+function selectedSpan(){
   if (state.month === "All Months" || state.day === ALL_DAYS) return null;
-  return state.day.startsWith(state.month + "-") ? state.day : null;
+  const a = state.day, b = state.dayTo || state.day;
+  return a <= b ? {fromKey:a, toKey:b} : {fromKey:b, toKey:a};
+}
+/* One day exactly. The day-wise comparisons and the "Previous Day" mode are only
+   meaningful here, so a span of two or more days deliberately returns null. */
+function selectedDay(){
+  const s = selectedSpan();
+  return s && s.fromKey === s.toKey ? s.fromKey : null;
+}
+function spanDays(s){
+  return Math.round((new Date(s.toKey+"T00:00:00") - new Date(s.fromKey+"T00:00:00"))/dayMs)+1;
+}
+/* "10-12 August 2026", or "28 July - 3 August 2026" when it crosses a month. The
+   year is written once, and the month once when both ends share it. */
+function spanLabel(f,t){
+  const sameMonth = f.getFullYear()===t.getFullYear() && f.getMonth()===t.getMonth();
+  return sameMonth
+    ? `${f.getDate()}\u2013${t.getDate()} ${MONTH_NAMES[f.getMonth()]} ${f.getFullYear()}`
+    : `${f.getDate()} ${MONTH_NAMES[f.getMonth()]}${
+        f.getFullYear()===t.getFullYear() ? "" : " " + f.getFullYear()
+      } \u2013 ${t.getDate()} ${MONTH_NAMES[t.getMonth()]} ${t.getFullYear()}`;
 }
 
 function monthOptions(){
@@ -726,11 +766,14 @@ function selectedMonthPartial(){
   return !!(m && m.partial);
 }
 function currentRange(){
-  const day = selectedDay();
-  if (day){
-    const d = new Date(day + "T00:00:00");
-    return {from:d, to:d, isDay:true,
-            label:`${DOW[d.getDay()]} ${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`};
+  const span = selectedSpan();
+  if (span){
+    const f = new Date(span.fromKey + "T00:00:00"), tt = new Date(span.toKey + "T00:00:00");
+    if (span.fromKey === span.toKey)
+      return {from:f, to:f, isDay:true, label:dayLabel(f)};
+    const n = spanDays(span);
+    return {from:f, to:tt, isSpan:true, days:n,
+            label:`${spanLabel(f,tt)} (${n} days)`};
   }
   if (state.month === "All Months")
     return {from:startOfMonth(REPORT_YEAR,0), to:endOfMonth(REPORT_YEAR,11),
@@ -750,7 +793,9 @@ function sameDateIn(y, m, day){
 function compareRange(cur){
   // Guard rather than fall through: without a day selected this mode has no
   // meaning, and the day-count branch below would silently treat it as 90 days.
-  const mode = (state.compare === PREVIOUS_DAY && !cur.isDay) ? "Previous Month" : state.compare;
+  let mode = state.compare;
+  if (mode === PREVIOUS_DAY    && !cur.isDay)  mode = "Previous Month";
+  if (mode === PREVIOUS_PERIOD && !cur.isSpan) mode = "Previous Month";
   /* With a single day selected every comparison stays one day wide, so the
      figures beside it are like for like instead of a day against a month. */
   if (cur.isDay){
@@ -777,6 +822,37 @@ function compareRange(cur){
     const to = addDays(c, -1);
     return {from:addDays(to, -(n-1)), to, label:`${n} days to ${iso(to)}`,
             note:`${n} days against one day — compare the daily average, not the total`};
+  }
+  /* A span keeps every comparison the same number of days wide, so the figures
+     beside it are like for like rather than a week against a month. */
+  if (cur.isSpan){
+    const n = cur.days;
+    if (mode === "Custom Period"){
+      const f = new Date(state.customFrom + "T00:00:00"), t = new Date(state.customTo + "T00:00:00");
+      if (isNaN(f) || isNaN(t) || f > t) return null;
+      return {from:f, to:t, label:`${iso(f)} to ${iso(t)}`};
+    }
+    if (mode === PREVIOUS_PERIOD){
+      const to = addDays(cur.from,-1), from = addDays(to,-(n-1));
+      return {from, to, label:`${spanLabel(from,to)} (${n} days)`};
+    }
+    if (mode === "Previous Month"){
+      const f = sameDateIn(cur.from.getFullYear(), cur.from.getMonth()-1, cur.from.getDate());
+      const t = sameDateIn(cur.to.getFullYear(),  cur.to.getMonth()-1,  cur.to.getDate());
+      return {from:f, to:t, label:spanLabel(f,t),
+              note: spanDays({fromKey:dkey(f),toKey:dkey(t)}) !== n
+                ? "the previous month is shorter, so the two windows differ in length" : ""};
+    }
+    if (mode === "Same Month Last Year"){
+      const f = sameDateIn(cur.from.getFullYear()-1, cur.from.getMonth(), cur.from.getDate());
+      const t = sameDateIn(cur.to.getFullYear()-1,  cur.to.getMonth(),  cur.to.getDate());
+      return {from:f, to:t, label:spanLabel(f,t),
+              note:"the call logs only cover 2026, so last year has no data"};
+    }
+    const k = mode === "Previous 30 Days" ? 30 : mode === "Previous 60 Days" ? 60 : 90;
+    const to = addDays(cur.from,-1);
+    return {from:addDays(to,-(k-1)), to, label:`${k} days to ${iso(to)}`,
+            note: k === n ? "" : `${k} days against ${n} \u2014 compare the daily average, not the total`};
   }
   if (mode === "Custom Period"){
     const f = new Date(state.customFrom + "T00:00:00"), t = new Date(state.customTo + "T00:00:00");
@@ -1488,6 +1564,8 @@ function calendarPanel(){
   const [y,m] = state.month.split("-").map(Number);
   const first = startOfMonth(y,m-1), lead = first.getDay();
   const days = dayOptions(), picked = selectedDay(), todayKey = dkey(TODAY);
+  const span = selectedSpan();
+  const inSpan = (key) => !!span && key >= span.fromKey && key <= span.toKey;
   const prevKey = monthKeyShift(state.month,-1), nextKey = monthKeyShift(state.month,1);
 
   /* A cell from the month either side, shown so the weeks read as whole rows.
@@ -1495,9 +1573,12 @@ function calendarPanel(){
      behave - unless it falls outside 2026, which the call logs do not cover. */
   const spill = (d, key) => {
     const reachable = key && d <= TODAY;
+    const k = dkey(d);
     return `<button type="button" class="cal-cell other${
-      d.getDay()===0||d.getDay()===6 ? " weekend" : ""}"
-      ${reachable ? `data-goto="${dkey(d)}"` : "disabled"}
+      d.getDay()===0||d.getDay()===6 ? " weekend" : ""}${
+      inSpan(k) ? " in-span" : ""}${
+      span && (k===span.fromKey||k===span.toKey) ? " span-end" : ""}"
+      ${reachable ? `data-goto="${k}"` : "disabled"}
       aria-label="${esc(dayLabel(d))}${reachable ? "" : " — outside the call logs"}"
       >${d.getDate()}</button>`;
   };
@@ -1510,10 +1591,12 @@ function calendarPanel(){
     if (dt.getDay() === 0 || dt.getDay() === 6) cls.push("weekend");
     if (d.future) cls.push("future");
     if (d.key === todayKey) cls.push("today");
+    if (inSpan(d.key)) cls.push("in-span");
+    if (span && (d.key === span.fromKey || d.key === span.toKey)) cls.push("span-end");
     const what = d.future ? "not yet"
                : d.calls ? `${d.calls} call${d.calls === 1 ? "" : "s"}` : "no calls";
     cells.push(`<button type="button" class="${cls.join(" ")}" data-day="${d.key}"
-      aria-pressed="${picked === d.key}" ${d.future ? "disabled" : ""}
+      aria-pressed="${inSpan(d.key)}" ${d.future ? "disabled" : ""}
       aria-label="${esc(dayLabel(dt))} — ${what}" title="${what}"
       >${dt.getDate()}</button>`);
   });
@@ -1536,10 +1619,14 @@ function calendarPanel(){
     </div>
     <div class="cal-foot">
       <button type="button" class="cal-link" id="calToday">Today</button>
-      <button type="button" class="cal-link" id="calAll"${picked ? "" : " disabled"}
+      <button type="button" class="cal-link" id="calAll"${span ? "" : " disabled"}
         >Whole month</button>
     </div></div>
-    <p class="cal-note">Hover a date for its call count. ${
+    <p class="cal-note">${state.awaitEnd
+      ? "Now click the last day of the range — or the same date again for that day alone."
+      : span && span.fromKey !== span.toKey
+        ? `${spanDays(span)} days selected. Click any date to start a new range.`
+        : "Click a date, then a second date for a range."} ${
       latestDayWithCalls() ? `The last day with calls is ${
         esc(shortDay(latestDayWithCalls()))}.` : ""}</p></div>`;
 }
@@ -1588,7 +1675,9 @@ function filterBar(){
     : "";
   const days = dayOptions(), pickedDay = selectedDay();
   const cur = currentRange(), prev = compareRange(cur);
-  const modes = cur.isDay ? [PREVIOUS_DAY].concat(COMPARE_MODES) : COMPARE_MODES;
+  const modes = cur.isDay  ? [PREVIOUS_DAY].concat(COMPARE_MODES)
+              : cur.isSpan ? [PREVIOUS_PERIOD].concat(COMPARE_MODES)
+              : COMPARE_MODES;
   const custom = state.compare === "Custom Period";
   return `<section class="filters" aria-label="Report filters">
     <div class="filter-row">
@@ -1610,7 +1699,9 @@ function filterBar(){
         <button type="button" class="daybtn" id="fDay" aria-expanded="${!!state.calOpen}"
           ${days.length ? "" : "disabled"}>
           <span>${days.length
-            ? (pickedDay ? esc(dayLabel(new Date(pickedDay + "T00:00:00"))) : ALL_DAYS)
+            ? (cur.isSpan ? esc(spanLabel(cur.from, cur.to))
+              : pickedDay ? esc(dayLabel(new Date(pickedDay + "T00:00:00")))
+              : ALL_DAYS)
             : "choose a month first"}</span>
           <span class="chev" aria-hidden="true">${state.calOpen ? "▲" : "▼"}</span>
         </button></div>
@@ -1637,20 +1728,51 @@ function filterBar(){
 /* "Previous Day" only means something while one day is selected, so it is stood
    down whenever the selection widens rather than left silently mismatched. */
 function guardCompare(){
-  if (state.compare === PREVIOUS_DAY && !selectedDay()) state.compare = "Previous Month";
+  const span = selectedSpan();
+  const isSpan = !!span && span.fromKey !== span.toKey;
+  if (state.compare === PREVIOUS_DAY    && !selectedDay()) state.compare = "Previous Month";
+  if (state.compare === PREVIOUS_PERIOD && !isSpan)        state.compare = "Previous Month";
 }
-function setDay(key){
-  state.day = key;
+/* Two clicks make a range. The first sets the anchor and leaves the selection a
+   single day, so a one-day look costs one click exactly as before; the second
+   closes the range, in either direction. A third click starts again. */
+function pickDay(key){
+  if (state.awaitEnd && state.day !== ALL_DAYS){
+    state.dayTo = key;
+    state.awaitEnd = false;
+  } else {
+    state.day = key;
+    state.dayTo = null;
+    state.awaitEnd = true;
+  }
+  guardCompare();
+  state.logPage = 1;
+  render();
+}
+function clearDays(){
+  state.day = ALL_DAYS;
+  state.dayTo = null;
+  state.awaitEnd = false;
   guardCompare();
   state.logPage = 1;
   render();
 }
 function goToMonth(key, keepCalendarOpen){
   state.month = key;
-  state.day = ALL_DAYS;                     // last month's 14th means nothing here
+  clearDaysQuiet();                         // last month's 14th means nothing here
   if (!keepCalendarOpen && key === "All Months") state.calOpen = false;
   guardCompare();
   state.logPage = 1;
+  render();
+}
+function clearDaysQuiet(){
+  state.day = ALL_DAYS; state.dayTo = null; state.awaitEnd = false;
+}
+/* Paging the calendar keeps the selection, so a range can be closed on a date in
+   the next or previous month. Changing month from the dropdown still clears it. */
+function pageMonth(key){
+  if (!key) return;
+  state.month = key;
   render();
 }
 
@@ -1661,24 +1783,51 @@ function wireFilters(){
   on("fMonth","change",  e => { goToMonth(e.target.value); });
 
   /* -- the day calendar -- */
-  on("fDay","click",     () => { state.calOpen = !state.calOpen; render(); });
-  on("calPrev","click",  () => { goToMonth(monthKeyShift(state.month,-1) || state.month, true); });
-  on("calNext","click",  () => { goToMonth(monthKeyShift(state.month, 1) || state.month, true); });
-  on("calAll","click",   () => { setDay(ALL_DAYS); });
+  /* Closing the panel abandons a half-made range rather than leaving it pending,
+     so re-opening the calendar later cannot turn an ordinary click into an end
+     point. The day already chosen stays selected. */
+  on("fDay","click",     () => {
+    state.calOpen = !state.calOpen;
+    if (!state.calOpen) state.awaitEnd = false;
+    render();
+  });
+  on("calPrev","click",  () => { pageMonth(monthKeyShift(state.month,-1)); });
+  on("calNext","click",  () => { pageMonth(monthKeyShift(state.month, 1)); });
+  on("calAll","click",   () => { clearDays(); });
   on("calToday","click", () => {
     state.month = mKey(TODAY);
-    setDay(dkey(TODAY));
+    state.awaitEnd = false;                       // Today means today, never an end point
+    pickDay(dkey(TODAY));
   });
   const grid = document.querySelector(".cal-grid");
   if (grid) grid.addEventListener("click", e => {
     const cell = e.target.closest(".cal-cell");
     if (!cell || cell.disabled) return;
-    if (cell.dataset.day) { setDay(cell.dataset.day); return; }
+    if (cell.dataset.day) { pickDay(cell.dataset.day); return; }
     if (cell.dataset.goto){                       // a date from the neighbouring month
       state.month = cell.dataset.goto.slice(0,7);
-      setDay(cell.dataset.goto);
+      pickDay(cell.dataset.goto);
     }
   });
+  /* While the second click is pending, hovering shows the range it would make.
+     Classes are toggled in place rather than re-rendering on every mouse move. */
+  if (grid && state.awaitEnd){
+    const cellsOf = () => grid.querySelectorAll(".cal-cell");
+    const keyOf = (n) => n.dataset.day || n.dataset.goto || "";
+    grid.addEventListener("mouseover", e => {
+      const c = e.target.closest(".cal-cell");
+      const k = c && !c.disabled ? keyOf(c) : "";
+      if (!k) return;
+      const a = state.day, lo = k < a ? k : a, hi = k < a ? a : k;
+      cellsOf().forEach(n => {
+        const nk = keyOf(n);
+        n.classList.toggle("preview", !!nk && nk >= lo && nk <= hi);
+      });
+    });
+    grid.addEventListener("mouseleave", () => {
+      cellsOf().forEach(n => n.classList.remove("preview"));
+    });
+  }
   on("fCompare","change",e => { state.compare = e.target.value; render(); });
   on("fFrom","change",   e => { state.customFrom = e.target.value; render(); });
   on("fTo","change",     e => { state.customTo = e.target.value; render(); });
