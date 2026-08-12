@@ -4,6 +4,12 @@
   border-radius:6px;background:transparent;color:var(--ink-2);cursor:pointer}
 .live-btn:hover{border-color:var(--ink-3);color:var(--ink)}
 .live-err{color:var(--warn-ink);font-size:12px;flex:1 1 32ch;min-width:0}
+#thb-toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,14px);z-index:60;
+  max-width:46ch;padding:10px 16px;border-radius:8px;font-size:13px;line-height:1.45;
+  background:#141413;color:#faf9f5;box-shadow:0 6px 22px rgba(0,0,0,.22);
+  opacity:0;pointer-events:none;transition:opacity .18s ease,transform .18s ease}
+#thb-toast.on{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){#thb-toast{transition:none}}
 </style></head><body>
 <title>Twin Call Tracker</title>
 
@@ -1984,10 +1990,14 @@ function rsControl(){
       ${btn("rsRefresh","Retry")}</span>`;
   }
 
+  /* No helper is the ordinary case: a shared copy, and anyone reading it can do
+     nothing about that. Say where the figures came from and stop - an
+     instruction only the person who built this can act on is noise to everyone
+     else. The refresh controls appear on their own when a helper is running. */
   if (!RS.helper)
-    return `<span class="live-wrap">Red Stone: ${chip("won","saved copy")}
-      <span class="live-err">Run python3 scripts/serve.py to refresh invoices from the
-      portal. Costs below are from the last sync.</span></span>`;
+    return `<span class="live-wrap">Red Stone: ${chip("won","invoiced totals")}
+      <span class="live-err">From the invoice on each job in the Red Stone
+      portal.</span></span>`;
 
   return `<span class="live-wrap">Red Stone: ${chip("won","saved copy")}
     ${btn("rsRefresh","Refresh from Red Stone")}</span>`;
@@ -2448,13 +2458,69 @@ function exportCSV(){
     }));
     lines.push(cells.join(","));
   });
-  const blob = new Blob([lines.join("\n")], {type:"text/csv;charset=utf-8"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "thb-source-performance-" + currentRange().label.replace(/\s+/g,"-").toLowerCase() + ".csv";
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  saveCsv("thb-source-performance-" + currentRange().label.replace(/\s+/g,"-").toLowerCase()
+          + ".csv", lines.join("\n"));
 }
+/* -------------------------------------------------------------------------
+   Saving an export.
+
+   A page cannot hand the reader a file on its own here: the artifact viewer
+   never grants a page download permission, so the ordinary anchor-with-
+   download trick clicks and nothing happens. Offering a button that silently
+   does nothing is worse than offering none, so the save goes through the
+   runtime, which asks the reader and reports what they chose.
+
+   A local copy has no such restriction and keeps the ordinary path.
+   ------------------------------------------------------------------------- */
+function toast(msg){
+  let n = document.getElementById("thb-toast");
+  if (!n){ n = document.createElement("div"); n.id = "thb-toast"; document.body.appendChild(n); }
+  n.textContent = msg;
+  n.setAttribute("role","status");
+  n.classList.add("on");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => n.classList.remove("on"), 5000);
+}
+
+function saveWhy(e){
+  switch (e && e.code){
+    case "declined":      return "Download cancelled.";
+    case "too_large":     return "That export is too big to download here. Narrow the period and try again.";
+    case "rate_limited":  return "A download is already waiting. Try again in a moment.";
+    case "bad_request":   return "That export could not be prepared.";
+    default:              return "Downloads are not available in this view.";
+  }
+}
+
+async function saveCsv(filename, text){
+  const dl = window.claude && window.claude.downloads;
+  if (!dl){                                   // a local copy: the anchor works
+    const blob = new Blob([text], {type:"text/csv;charset=utf-8"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    return;
+  }
+  try {
+    await dl.save({filename, data:text});
+    toast("Saved " + filename);
+  } catch (e) {
+    /* Spreadsheets are not always an allowed type here. The data is the same
+       either way, so offer it as text rather than refusing outright. */
+    if (e && e.code === "extension_not_enabled"){
+      const alt = filename.replace(/\.csv$/, ".txt");
+      try {
+        await dl.save({filename:alt, data:text});
+        toast("Saved " + alt + " — spreadsheets can't be downloaded here, so this is the same data as text.");
+      } catch (e2) { toast(saveWhy(e2)); }
+      return;
+    }
+    toast(saveWhy(e));
+  }
+}
+
 function pageSource(){
   return `${filterBar()}
   <div class="page-head"><h2>Source Performance</h2>
@@ -2647,12 +2713,8 @@ function exportCallLog(){
   const esc2 = (v) => '"' + String(v === null || v === undefined ? "" : v).replace(/"/g, '""') + '"';
   const lines = [cols.map(c => esc2(c[0])).join(",")];
   recs.forEach(r => { lines.push(cols.map(c => esc2(c[1](r))).join(",")); });
-  const blob = new Blob([lines.join("\n")], {type:"text/csv;charset=utf-8"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "thb-call-log-" + currentRange().label.replace(/\s+/g,"-").toLowerCase() + ".csv";
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  saveCsv("thb-call-log-" + currentRange().label.replace(/\s+/g,"-").toLowerCase()
+          + ".csv", lines.join("\n"));
 }
 
 function wireCalls(root){

@@ -219,3 +219,6 @@ __marimo__/
 
 # credentials and fetched artefacts, never committed
 .cache/
+
+# generated for publishing; rebuild from dashboard.html
+artifact-source.html
