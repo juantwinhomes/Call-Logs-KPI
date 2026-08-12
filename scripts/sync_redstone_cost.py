@@ -52,6 +52,8 @@ ORDERS = f"{BASE}/orders"
 
 BEGIN = "/* BEGIN GENERATED REDSTONE_COST */"
 END = "/* END GENERATED REDSTONE_COST */"
+QBEGIN = "/* BEGIN GENERATED REDSTONE_QTY */"
+QEND = "/* END GENERATED REDSTONE_QTY */"
 
 REPO = Path(__file__).resolve().parent.parent
 TARGET = REPO / "dashboard.html"
@@ -59,6 +61,11 @@ CACHE = REPO / ".cache" / "redstone"
 
 # Total sits after the administrative fee on every invoice seen so far.
 RE_TOTAL = re.compile(r"Administrative Fee\s*3\.50%[\d,.]+\$([\d,]+\.\d{2})")
+# The billed quantity is the count on the invoice's first line item -- what Red
+# Stone charged for, which is not always what the board says was ordered.
+RE_QTY = (re.compile(r"Minimum([\d,]+)0\.08"),
+          re.compile(r"Minimum([\d,]+)0\.\d+"),
+          re.compile(r"Postage - Standard(?: class)?([\d,]+)0\."))
 RE_JOBHASH = re.compile(r'data-jobid="(\d+)".{0,400}?orders/view/([0-9a-f]{20,})', re.S)
 RE_INVOICE = re.compile(r'(https://redstonemail\.com/orders/getFile/[0-9a-f]+/[^"]*INV_\d+\.pdf)')
 
@@ -166,7 +173,8 @@ def pdf_text(raw: bytes) -> str:
     return "".join(out)
 
 
-def invoice_total(raw: bytes, job: str) -> float:
+def invoice_figures(raw: bytes, job: str) -> tuple[float, int]:
+    """(total, billed quantity) off one invoice."""
     text = pdf_text(raw)
     if job not in text:
         raise SyncError(f"invoice does not mention job {job}; wrong file?")
@@ -175,7 +183,19 @@ def invoice_total(raw: bytes, job: str) -> float:
         raise SyncError("no 'Administrative Fee 3.50% ... $total' line found")
     if len({h for h in hits}) > 1:
         raise SyncError(f"invoice has conflicting totals {sorted(set(hits))}")
-    return round(float(hits[0].replace(",", "")), 2)
+    qty = None
+    for pat in RE_QTY:
+        m = pat.search(text)
+        if m:
+            qty = int(m.group(1).replace(",", ""))
+            break
+    if not qty:
+        raise SyncError("no billed quantity found on the invoice")
+    return round(float(hits[0].replace(",", "")), 2), qty
+
+
+def invoice_total(raw: bytes, job: str) -> float:
+    return invoice_figures(raw, job)[0]
 
 
 def jobs_in_dashboard(text: str) -> dict[str, float]:
@@ -192,13 +212,17 @@ def existing(text: str) -> dict[str, float]:
             for m in re.finditer(r'"(\d+)"\s*:\s*([\d.]+)', block.group(1))}
 
 
-def render(costs: dict[str, float]) -> str:
-    items = [f'"{job}":{cost:>8.2f}' for job, cost in sorted(costs.items())]
-    lines = ["const REDSTONE_COST = {"]
+def render_map(name: str, values: dict, fmt: str) -> str:
+    items = [f'"{job}":{v:{fmt}}' for job, v in sorted(values.items())]
+    lines = [f"const {name} = {{"]
     for i in range(0, len(items), 4):
         lines.append("  " + ", ".join(items[i:i + 4]) + ("," if i + 4 < len(items) else ""))
     lines.append("};")
     return "\n".join(lines)
+
+
+def render(costs: dict[str, float]) -> str:
+    return render_map("REDSTONE_COST", costs, ">8.2f")
 
 
 def main() -> int:
@@ -231,12 +255,15 @@ def main() -> int:
 
     missing = sorted(wanted - set(hashes))
     costs: dict[str, float] = {}
+    quantities: dict[str, int] = {}
     failed: list[str] = []
     for job in sorted(wanted):
         if job not in hashes:
             continue
         try:
-            costs[job] = invoice_total(invoice_pdf(jar, job, hashes[job], args.refresh), job)
+            total, qty = invoice_figures(invoice_pdf(jar, job, hashes[job], args.refresh), job)
+            costs[job] = total
+            quantities[job] = qty
         except SyncError as exc:
             failed.append(f"  {job}: {exc}")
 
@@ -250,6 +277,13 @@ def main() -> int:
         return 2
 
     before = existing(text)
+    before_q = {m.group(1): int(m.group(2)) for m in re.finditer(
+        r'"(\d+)"\s*:\s*(\d+)',
+        (re.search(re.escape(QBEGIN) + r"(.*?)" + re.escape(QEND), text, re.S)
+         or re.match("(?P<x>)", "")).group(1) if QBEGIN in text else "")}
+    qty_changed = sorted(j for j in set(quantities) & set(before_q)
+                         if quantities[j] != before_q[j])
+    qty_added = sorted(set(quantities) - set(before_q))
     changed = sorted(j for j in set(costs) & set(before) if abs(costs[j] - before[j]) > 0.005)
     added = sorted(set(costs) - set(before))
     for job in changed:
@@ -264,7 +298,11 @@ def main() -> int:
         for job in drift:
             print(f"  {job}  file {listed[job]:>10,.2f}  invoice {costs[job]:>10,.2f}")
 
-    if not (changed or added):
+    for job in qty_changed:
+        print(f"  qty     {job}  {before_q[job]:>10,} -> {quantities[job]:>10,}")
+    if qty_added:
+        print(f"  qty     {len(qty_added)} job(s) newly recorded")
+    if not (changed or added or qty_changed or qty_added):
         print("  invoices and dashboard agree; nothing to write")
         return 0
     if args.check:
@@ -275,6 +313,12 @@ def main() -> int:
         updated = re.sub(re.escape(BEGIN) + r".*?" + re.escape(END),
                          BEGIN + "\n" + render(costs) + "\n" + END,
                          text, count=1, flags=re.S)
+        qblock = QBEGIN + "\n" + render_map("REDSTONE_QTY", quantities, ">7d") + "\n" + QEND
+        if QBEGIN in updated:
+            updated = re.sub(re.escape(QBEGIN) + r".*?" + re.escape(QEND),
+                             qblock, updated, count=1, flags=re.S)
+        else:
+            updated = updated.replace(END, END + "\n" + qblock, 1)
     else:
         anchor = "const MAILED_JOBS   = REDSTONE_JOBS.filter"
         if anchor not in text:

@@ -83,6 +83,29 @@ downloaded invoices, cookies and optionally saved credentials, and is gitignored
 - **`cost` on `REDSTONE_JOBS`.** A fallback for jobs missing from
   `REDSTONE_COST`. The generated block wins.
 
+## How cost per mail is averaged
+
+Every cost-per-mail figure is the **plain average of each job's own rate**, not
+total cost over total pieces. That is how the board's `Cost per Mail` column
+summarises, and the dashboard follows it so the two agree — 16 jobs, $0.5453,
+the 0.545 the board shows.
+
+The two are not close enough to treat as the same thing:
+
+| | All direct mail |
+|---|---|
+| average of per-job rates *(board, and this page)* | $0.5453 |
+| total cost ÷ total pieces | $0.4924 |
+
+An average of rates counts a 293-piece letter at $1.12 equally with an
+8,244-piece drop at $0.47, so it reads above what was actually paid per piece.
+Use the weighted figure if you ever need spend ÷ volume; do not quietly swap
+the cards to it, because then the page and the board disagree.
+
+`REDSTONE_QTY` is generated alongside `REDSTONE_COST` from the same invoices,
+so the "Red Stone billed" cards apply the same method to Red Stone's own
+quantities and neither source is measured with the other's ruler.
+
 ## What is live, and where
 
 Live reads only work outside a published artifact. An artifact runs under a CSP

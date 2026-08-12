@@ -545,6 +545,14 @@ const REDSTONE_COST = {
   "289244": 1376.02, "290763": 2214.38, "291195": 1672.15, "291483": 1947.49
 };
 /* END GENERATED REDSTONE_COST */
+/* BEGIN GENERATED REDSTONE_QTY */
+const REDSTONE_QTY = {
+  "281322":    992, "281822":   1752, "282621":    968, "282914":   1931,
+  "283693":   2679, "284126":   8111, "284128":    290, "285043":   8589,
+  "285989":   3669, "285990":   5623, "287106":   3132, "287141":   8710,
+  "289244":   2441, "290763":   4583, "291195":   3171, "291483":   3515
+};
+/* END GENERATED REDSTONE_QTY */
 const MAILED_JOBS   = REDSTONE_JOBS.filter(j => j.status === "Done");
 const IN_PRODUCTION = REDSTONE_JOBS.filter(j => j.status !== "Done");
 const POSTCARD_JOBS = MAILED_JOBS.filter(j => j.fmt === "Postcard");
@@ -1029,15 +1037,31 @@ function suppliedCost(range, master, leaf){
 function boardSpend(range, master, leaf){
   const leaves = scopeLeaves(master, leaf).filter(l => l !== NEEDS_REVIEW && leafCosted(l));
   if (!leaves.length) return {monday:null, redstone:null, pieces:null};
-  let monday = 0, redstone = 0, pieces = 0;
+  let monday = 0, redstone = 0, pieces = 0, rsPieces = 0;
+  /* Cost per mail is the plain average of each job's own rate, not total cost
+     over total pieces. That is how the monday.com board's Cost per Mail column
+     summarises, and the dashboard follows it so the two agree. The difference
+     is real: an average of rates weights a 293-piece letter the same as an
+     8,244-piece postcard drop, which reads higher than the money actually
+     spent per piece. rateMonday and rateRedstone each use their own system's
+     quantity, so neither is measured with the other's ruler. */
+  const rateM = [], rateR = [];
   leaves.forEach(l => (COSTING[l].jobs || []).forEach(j => {
     const d = jobDate(j);
     if (d.date < range.from || d.date > range.to) return;
-    monday   += (liveCost(j.job) ?? MONDAY_COST[j.job] ?? j.cost);
-    redstone += (rsCost(j.job) ?? REDSTONE_COST[j.job] ?? j.cost);
+    const cm = (liveCost(j.job) ?? MONDAY_COST[j.job] ?? j.cost);
+    const cr = (rsCost(j.job) ?? REDSTONE_COST[j.job] ?? j.cost);
+    const qr = REDSTONE_QTY[j.job] ?? j.qty;
+    monday   += cm;
+    redstone += cr;
     pieces   += j.qty;
+    rsPieces += qr;
+    if (j.qty > 0) rateM.push(cm / j.qty);
+    if (qr    > 0) rateR.push(cr / qr);
   }));
-  return {monday, redstone, pieces};
+  const mean = (a) => a.length ? a.reduce((x,y) => x + y, 0) / a.length : null;
+  return {monday, redstone, pieces, rsPieces,
+          rateMonday: mean(rateM), rateRedstone: mean(rateR), jobs: rateM.length};
 }
 
 function aggregate(range, master, leaf){
@@ -1087,10 +1111,15 @@ function aggregate(range, master, leaf){
      since December 2025 and no check job at all, so leaving checks out of a sum
      guesses at nothing. Each card names what it covers. */
   a.piecesCosted       = bs.pieces;
-  a.costPerPieceCosted = bs.pieces > 0 ? bs.redstone / bs.pieces : null;
+  a.rsPiecesCosted     = bs.rsPieces;
+  a.costPerPieceCosted  = bs.rateMonday;       // the board's own figure
+  a.ratePerMailRedstone = bs.rateRedstone;     // same method, Red Stone's numbers
   a.mailed = c.pieces;
   a.jobs = c.jobs; a.estimatedJobs = c.estimated;
-  a.costPerPiece      = a.mailKnown && c.pieces > 0 ? c.cost / c.pieces : null;
+  /* Averaged per job like the board, not total over total. One method across
+     the page: a Cost Per Postcard computed one way beside a Cost Per Mail
+     computed another would be two numbers nobody can reconcile. */
+  a.costPerPiece      = a.mailKnown ? bs.rateMonday : null;
   a.costPerInboundCall= a.mailKnown && c.cost > 0 && a.inbound > 0 ? c.cost / a.inbound : null;
   a.costPerCall       = a.mailKnown && c.cost > 0 && a.calls   > 0 ? c.cost / a.calls   : null;
   /* Inbound calls per 1,000 pieces mailed — a rate the sheets support. */
@@ -1167,6 +1196,7 @@ const MAIL_CARD_SETS = [
     {key:"mailed",            title:"Postcards Mailed",                       fmt:"int",  dir:"flat"},
     {key:"spend",             title:"Postcard Mail Cost",                     fmt:"usd0", dir:"flat"},
     {key:"costPerPiece",      title:"Cost Per Postcard",                      fmt:"usd2", dir:"down"},
+    {key:"ratePerMailRedstone",title:"Cost Per Postcard — Red Stone billed",  fmt:"usd2", dir:"down"},
     {key:"spendMonday",       title:"Monday.com / KPI Cost — Postcard",       fmt:"usd0", dir:"flat"},
     {key:"spendRedstone",     title:"Redstone Cost — Postcard",               fmt:"usd0", dir:"flat"},
     {key:"inbound",           title:"Total Inbound Callers From Postcard",    fmt:"int",  dir:"up"},
@@ -1185,6 +1215,7 @@ const MAIL_CARD_SETS = [
     {key:"mailed",            title:"Letters Mailed",                         fmt:"int",  dir:"flat"},
     {key:"spend",             title:"Letter Mail Cost",                       fmt:"usd0", dir:"flat"},
     {key:"costPerPiece",      title:"Cost Per Letter",                        fmt:"usd2", dir:"down"},
+    {key:"ratePerMailRedstone",title:"Cost Per Letter — Red Stone billed",    fmt:"usd2", dir:"down"},
     {key:"spendMonday",       title:"Monday.com / KPI Cost — Letter",         fmt:"usd0", dir:"flat"},
     {key:"spendRedstone",     title:"Redstone Cost — Letter",                 fmt:"usd0", dir:"flat"},
     {key:"inbound",           title:"Total Inbound Callers From Letters",     fmt:"int",  dir:"up"},
@@ -1203,6 +1234,7 @@ const MAIL_COMBINED_SETS = [
    heading:"Direct Mail — all formats", cards:[
     {key:"piecesCosted",       title:"Total Pieces Mailed (All Direct Mail)",  fmt:"int",  dir:"flat"},
     {key:"costPerPieceCosted", title:"Cost Per Mail (All Direct Mail)",        fmt:"usd2", dir:"down"},
+    {key:"ratePerMailRedstone",title:"Cost Per Mail — Red Stone billed",       fmt:"usd2", dir:"down"},
     {key:"spendMonday",  title:"Monday.com / KPI Cost — All Direct Mail",     fmt:"usd0", dir:"flat"},
     {key:"spendRedstone",title:"Redstone Cost — All Direct Mail",             fmt:"usd0", dir:"flat"},
     {key:"inbound",      title:"Total Inbound Callers From Direct Mail",      fmt:"int",  dir:"up"}
