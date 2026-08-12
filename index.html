@@ -292,6 +292,9 @@ const MONTH_NAMES = ["January","February","March","April","May","June",
                      "July","August","September","October","November","December"];
 const COMPARE_MODES = ["Previous Month","Previous 30 Days","Previous 60 Days",
                        "Previous 90 Days","Same Month Last Year","Custom Period"];
+/* Offered only while a single day is selected, where it is the useful comparison. */
+const PREVIOUS_DAY = "Previous Day";
+const ALL_DAYS = "All Days";
 const REPORT_YEAR = 2026;
 const TODAY = new Date(2026, 7, 11);
 
@@ -587,7 +590,7 @@ const MONTHS = (() => {
 
 const state = {
   master: ALL_MASTERS, leaf: ALL_LEAF,
-  month: "All Months", compare: "Previous Month",
+  month: "All Months", day: ALL_DAYS, compare: "Previous Month",
   customFrom:"2026-07-01", customTo:"2026-07-31",
   page:"dashboard",
   srcSort:{col:"calls", dir:-1}, srcQuery:"", srcView:"master",
@@ -600,6 +603,42 @@ const startOfMonth = (y,m) => new Date(y, m, 1);
 const endOfMonth   = (y,m) => new Date(y, m+1, 0);
 const addDays = (d,n) => new Date(d.getFullYear(), d.getMonth(), d.getDate()+n);
 const iso = (d) => d.toISOString().slice(0,10);
+/* Day keys are built from the local calendar parts, not through toISOString():
+   a date created as local midnight is the previous day in UTC for anyone east
+   of Greenwich, which would silently shift every day filter by one. */
+const dkey = (d) => d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0")
+                    + "-" + String(d.getDate()).padStart(2,"0");
+const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+/* Calls per calendar day, counted once from every record. Used to label the day
+   picker so an empty day is visible before it is chosen. Deliberately not
+   filtered by source: the labels would then change as the source filter moved,
+   which is the same convention the month picker already follows. */
+let DAY_COUNTS = null;
+function dayCounts(){
+  if (DAY_COUNTS) return DAY_COUNTS;
+  DAY_COUNTS = {};
+  DATA.records.forEach(r => { const k = dkey(r.date); DAY_COUNTS[k] = (DAY_COUNTS[k] || 0) + 1; });
+  return DAY_COUNTS;
+}
+
+function dayOptions(){
+  if (state.month === "All Months") return [];
+  const [y,m] = state.month.split("-").map(Number);
+  const last = endOfMonth(y,m-1).getDate(), counts = dayCounts(), out = [];
+  for (let d = 1; d <= last; d++){
+    const dt = new Date(y, m-1, d), key = dkey(dt);
+    out.push({key, label:`${DOW[dt.getDay()]} ${String(d).padStart(2,"0")}`,
+              calls:counts[key] || 0, future: dt > TODAY});
+  }
+  return out;
+}
+
+/* A day only stands while its own month is selected. */
+function selectedDay(){
+  if (state.month === "All Months" || state.day === ALL_DAYS) return null;
+  return state.day.startsWith(state.month + "-") ? state.day : null;
+}
 
 function monthOptions(){
   const withData = new Set(DATA.records.map(r => mKey(r.date)));
@@ -613,19 +652,63 @@ function monthOptions(){
   return out;
 }
 function selectedMonthPartial(){
-  if (state.month === "All Months") return false;
+  if (state.month === "All Months" || selectedDay()) return false;   // a day is never partial
   const m = monthOptions().find(o => o !== "All Months" && o.key === state.month);
   return !!(m && m.partial);
 }
 function currentRange(){
+  const day = selectedDay();
+  if (day){
+    const d = new Date(day + "T00:00:00");
+    return {from:d, to:d, isDay:true,
+            label:`${DOW[d.getDay()]} ${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`};
+  }
   if (state.month === "All Months")
     return {from:startOfMonth(REPORT_YEAR,0), to:endOfMonth(REPORT_YEAR,11),
             label:`All Months ${REPORT_YEAR}`};
   const [y,m] = state.month.split("-").map(Number);
   return {from:startOfMonth(y,m-1), to:endOfMonth(y,m-1), label:`${MONTH_NAMES[m-1]} ${y}`};
 }
+const dayLabel = (d) =>
+  `${DOW[d.getDay()]} ${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
+
+/* One calendar day, clamped into a month that may be shorter: comparing 31 March
+   with "the same date last month" has to land on 28 February, not 3 March. */
+function sameDateIn(y, m, day){
+  const last = endOfMonth(y,m).getDate();
+  return new Date(y, m, Math.min(day, last));
+}
 function compareRange(cur){
-  const mode = state.compare;
+  // Guard rather than fall through: without a day selected this mode has no
+  // meaning, and the day-count branch below would silently treat it as 90 days.
+  const mode = (state.compare === PREVIOUS_DAY && !cur.isDay) ? "Previous Month" : state.compare;
+  /* With a single day selected every comparison stays one day wide, so the
+     figures beside it are like for like instead of a day against a month. */
+  if (cur.isDay){
+    const c = cur.from;
+    if (mode === "Custom Period"){
+      const f = new Date(state.customFrom + "T00:00:00"), t = new Date(state.customTo + "T00:00:00");
+      if (isNaN(f) || isNaN(t) || f > t) return null;
+      return {from:f, to:t, label:`${iso(f)} to ${iso(t)}`};
+    }
+    if (mode === "Previous Day"){
+      const p = addDays(c, -1);
+      return {from:p, to:p, label:dayLabel(p)};
+    }
+    if (mode === "Previous Month"){
+      const p = sameDateIn(c.getFullYear(), c.getMonth()-1, c.getDate());
+      return {from:p, to:p, label:dayLabel(p)};
+    }
+    if (mode === "Same Month Last Year"){
+      const p = sameDateIn(c.getFullYear()-1, c.getMonth(), c.getDate());
+      return {from:p, to:p, label:dayLabel(p),
+              note:"the call logs only cover 2026, so last year has no data"};
+    }
+    const n = mode === "Previous 30 Days" ? 30 : mode === "Previous 60 Days" ? 60 : 90;
+    const to = addDays(c, -1);
+    return {from:addDays(to, -(n-1)), to, label:`${n} days to ${iso(to)}`,
+            note:`${n} days against one day — compare the daily average, not the total`};
+  }
   if (mode === "Custom Period"){
     const f = new Date(state.customFrom + "T00:00:00"), t = new Date(state.customTo + "T00:00:00");
     if (isNaN(f) || isNaN(t) || f > t) return null;
@@ -1270,6 +1353,29 @@ function highlightIndex(){
   return y === REPORT_YEAR ? m-1 : -1;
 }
 
+/* Every day of the selected month. Once a month is chosen the trend charts show
+   days rather than months, because a month view cannot show a day. */
+function dailySeries(master, leaf){
+  return dayOptions().map(d => {
+    const dt = new Date(d.key + "T00:00:00");
+    const a = aggregate({from:dt, to:dt}, master, leaf);
+    return {label:d.label.slice(4), agg:a, hasData:!d.future};
+  });
+}
+/* Which bar to emphasise in the daily charts: the selected day, if there is one. */
+function dayHighlightIndex(){
+  const day = selectedDay();
+  return day ? Number(day.slice(8,10)) - 1 : -1;
+}
+/* The trend charts are daily whenever a single month is in view. */
+const trendIsDaily = () => state.month !== "All Months";
+const trendUnit = () => trendIsDaily() ? "By Day" : "By Month";
+function monthTitle(){
+  if (state.month === "All Months") return `All Months ${REPORT_YEAR}`;
+  const [y,m] = state.month.split("-").map(Number);
+  return `${MONTH_NAMES[m-1]} ${y}`;
+}
+
 /* =========================================================================
    10. PAGES
    ========================================================================= */
@@ -1312,7 +1418,14 @@ function filterBar(){
         .concat(TAXONOMY[state.master].map(l =>
           `<option value="${esc(l)}"${state.leaf===l?" selected":""}>${esc(l)}</option>`)).join("")
     : "";
+  const days = dayOptions(), pickedDay = selectedDay();
+  const dayOpts = [`<option value="${ALL_DAYS}"${!pickedDay?" selected":""}>${ALL_DAYS}</option>`]
+    .concat(days.map(d =>
+      `<option value="${d.key}"${pickedDay===d.key?" selected":""}>${esc(d.label)}${
+        d.calls ? ` — ${d.calls} call${d.calls===1?"":"s"}`
+                : (d.future ? " (not yet)" : " (no calls)")}</option>`)).join("");
   const cur = currentRange(), prev = compareRange(cur);
+  const modes = cur.isDay ? [PREVIOUS_DAY].concat(COMPARE_MODES) : COMPARE_MODES;
   const custom = state.compare === "Custom Period";
   return `<section class="filters" aria-label="Report filters">
     <div class="filter-row">
@@ -1330,8 +1443,11 @@ function filterBar(){
               : "none — single CRM source"}</option></select>`}</div>
       <div class="field"><label for="fMonth">Report Month</label>
         <select id="fMonth">${monthOpts}</select></div>
+      <div class="field${days.length ? "" : " disabled"}"><label for="fDay">Day</label>
+        ${days.length ? `<select id="fDay">${dayOpts}</select>`
+          : `<select id="fDay" disabled><option>choose a month first</option></select>`}</div>
       <div class="field"><label for="fCompare">Compare To</label>
-        <select id="fCompare">${COMPARE_MODES.map(c =>
+        <select id="fCompare">${modes.map(c =>
           `<option${state.compare===c?" selected":""}>${esc(c)}</option>`).join("")}</select></div>
       ${custom ? `<div class="field"><label for="fFrom">Custom From</label>
         <input type="date" id="fFrom" value="${state.customFrom}"></div>
@@ -1343,6 +1459,8 @@ function filterBar(){
       <span>Compared With: <b>${prev ? esc(prev.label) : "not set"}</b></span>
       <span>Source: <b>${esc(state.master)}${
         showLeaf && state.leaf !== ALL_LEAF ? " › " + esc(state.leaf) : ""}</b></span>
+      ${cur.isDay ? `<span>Calls That Day: <b>${
+        fmt(dayCounts()[selectedDay()] || 0,"int")}</b></span>` : ""}
       ${selectedMonthPartial() ? '<span class="warn-inline">partial month — to 11 August</span>' : ""}
       ${prev && prev.note ? `<span class="warn-inline">${esc(prev.note)}</span>` : ""}
     </div></section>`;
@@ -1351,7 +1469,18 @@ function wireFilters(){
   const on = (id,ev,fn) => { const n = document.getElementById(id); if (n) n.addEventListener(ev,fn); };
   on("fMaster","change", e => { state.master = e.target.value; state.leaf = ALL_LEAF; state.logPage=1; render(); });
   on("fLeaf","change",   e => { state.leaf = e.target.value; state.logPage=1; render(); });
-  on("fMonth","change",  e => { state.month = e.target.value; state.logPage=1; render(); });
+  on("fMonth","change",  e => {
+    state.month = e.target.value;
+    state.day = ALL_DAYS;                       // last month's 14th means nothing here
+    if (state.compare === PREVIOUS_DAY) state.compare = "Previous Month";
+    state.logPage=1; render();
+  });
+  on("fDay","change",    e => {
+    state.day = e.target.value;
+    // "Previous Day" only exists while a day is selected.
+    if (!selectedDay() && state.compare === PREVIOUS_DAY) state.compare = "Previous Month";
+    state.logPage=1; render();
+  });
   on("fCompare","change",e => { state.compare = e.target.value; render(); });
   on("fFrom","change",   e => { state.customFrom = e.target.value; render(); });
   on("fTo","change",     e => { state.customTo = e.target.value; render(); });
@@ -1577,15 +1706,17 @@ function pageDashboard(){
   ${mailSection(cur, prevR)}
   ${dmPipelineSection(cur, prevR)}
 
-  <div class="sec"><h2>Trends</h2><p>All of ${REPORT_YEAR} from the call logs${
-    highlightIndex() >= 0 ? ", with " + esc(cur.label) + " emphasized" : ""}.</p></div>
+  <div class="sec"><h2>Trends</h2><p>${trendIsDaily()
+    ? `Every day of ${esc(monthTitle())} from the call logs${
+        dayHighlightIndex() >= 0 ? ", with " + esc(cur.label) + " emphasized" : ""}.`
+    : `All of ${REPORT_YEAR} from the call logs.`}</p></div>
   <div class="chart-grid">
-    ${chartCard("chCalls","Total Calls By Month","records")}
-    ${chartCard("chInbound","Inbound Calls By Month","inbound calls")}
-    ${chartCard("chFirst","First Time Callers By Month","first-time callers")}
-    ${chartCard("chAppt","Appointment Booked (H) By Month","appointments")}
-    ${chartCard("chMailed","Pieces Mailed By Month","pieces")}
-    ${chartCard("chCPP","Cost Per Piece By Month","USD")}
+    ${chartCard("chCalls","Total Calls " + trendUnit(),"records")}
+    ${chartCard("chInbound","Inbound Calls " + trendUnit(),"inbound calls")}
+    ${chartCard("chFirst","First Time Callers " + trendUnit(),"first-time callers")}
+    ${chartCard("chAppt","Appointment Booked (H) " + trendUnit(),"appointments")}
+    ${chartCard("chMailed","Pieces Mailed " + trendUnit(),"pieces")}
+    ${chartCard("chCPP","Cost Per Piece " + trendUnit(),"USD")}
   </div>
 
   <div class="sec"><h2>Breakdowns</h2>
@@ -1607,22 +1738,26 @@ function chartCard(id, title, unit, extra){
     ${extra || ""}<div class="chart-wrap" id="${id}"></div></section>`;
 }
 function drawDashboardCharts(){
-  const ms = monthlySeries(state.master, state.leaf);
-  const labels = ms.map(m => m.label), hi = highlightIndex();
+  const daily = trendIsDaily();
+  const ms = daily ? dailySeries(state.master, state.leaf)
+                   : monthlySeries(state.master, state.leaf);
+  const labels = ms.map(m => m.label);
+  const hi = daily ? dayHighlightIndex() : highlightIndex();
+  const per = daily ? "day" : "month";
   const S1 = "var(--s1)";
-  mountChart("chCalls",   h => columnChart(h,{labels,highlight:hi,kind:"int",aria:"Total calls by month",
+  mountChart("chCalls",   h => columnChart(h,{labels,highlight:hi,kind:"int",aria:"Total calls by " + per,
     series:[{name:"Total Calls",color:S1,values:seriesVals(ms,a=>a.calls)}]}));
-  mountChart("chInbound", h => columnChart(h,{labels,highlight:hi,kind:"int",aria:"Inbound calls by month",
+  mountChart("chInbound", h => columnChart(h,{labels,highlight:hi,kind:"int",aria:"Inbound calls by " + per,
     series:[{name:"Inbound Calls",color:S1,values:seriesVals(ms,a=>a.inbound)}]}));
-  mountChart("chFirst",   h => columnChart(h,{labels,highlight:hi,kind:"int",aria:"First time callers by month",
+  mountChart("chFirst",   h => columnChart(h,{labels,highlight:hi,kind:"int",aria:"First time callers by " + per,
     series:[{name:"First Time Callers",color:S1,values:seriesVals(ms,a=>a.firstTime)}]}));
-  mountChart("chAppt",    h => columnChart(h,{labels,highlight:hi,kind:"int",aria:"Appointments by month",
+  mountChart("chAppt",    h => columnChart(h,{labels,highlight:hi,kind:"int",aria:"Appointments by " + per,
     series:[{name:"Appointment Booked (H)",color:S1,values:seriesVals(ms,a=>a.apptBooked)}]}));
   mountChart("chMailed",  h => columnChart(h,{labels,highlight:hi,kind:"int",
-    emptyMsg:"No mail data for this selection", aria:"Pieces mailed by month",
+    emptyMsg:"No mail data for this selection", aria:"Pieces mailed by " + per,
     series:[{name:"Pieces Mailed",color:S1,values:seriesVals(ms,a=>a.mailed)}]}));
   mountChart("chCPP",     h => columnChart(h,{labels,highlight:hi,kind:"usd2",
-    emptyMsg:"No mail cost for this selection", aria:"Cost per piece by month",
+    emptyMsg:"No mail cost for this selection", aria:"Cost per piece by " + per,
     series:[{name:"Cost Per Piece",color:S1,values:seriesVals(ms,a=>a.costPerPiece)}]}));
 }
 
